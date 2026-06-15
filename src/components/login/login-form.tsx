@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import RoleSelector from "@/components/login/role-selector";
 import ConsentModal from "@/components/login/consent-modal";
 import { UserRole } from "@/types/user";
+import { useTheme } from "@/lib/theme-context";
 
 const CONSENT_KEY = "vcf_consent_session";
 
@@ -27,6 +28,8 @@ function validatePassword(password: string): string[] {
 
 export default function LoginForm() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [selectedRole, setSelectedRole]   = useState<UserRole | null>(null);
   const [email, setEmail]                 = useState("");
   const [password, setPassword]           = useState("");
@@ -119,11 +122,9 @@ export default function LoginForm() {
       >
         {/* Logo */}
         <div className="text-center mb-6">
-          <div
-            className="font-head text-2xl font-bold tracking-widest uppercase mb-1"
-            style={{ color: "var(--c-accent)" }}
-          >
-            VCF-LVL-UP
+          <div className="font-head text-2xl font-bold tracking-widest uppercase mb-1">
+            <span style={{ color: isDark ? "#FFFFFF" : "#000000" }}>VCF: </span>
+            <span style={{ color: "var(--c-accent)" }}>LVL UP!</span>
           </div>
           <h2
             className="font-head text-xl font-bold uppercase tracking-[2px] mb-1"

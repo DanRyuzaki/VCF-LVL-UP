@@ -7,10 +7,12 @@ import AncmentSection from "@/components/landing/ancment";
 import MatchesSection from "@/components/landing/matches";
 import LiveSection from "@/components/landing/live";
 import AccessSection from "@/components/landing/access";
+import DataPrivacyModal from "@/components/shared/data-privacy-modal";
 
 export default function LandingPage() {
   return (
     <>
+      <DataPrivacyModal />
       <Navbar />
       <main>
         <HeroSection />

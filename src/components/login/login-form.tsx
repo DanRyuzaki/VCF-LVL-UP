@@ -1,9 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import RoleSelector from "@/components/login/role-selector";
 import ConsentModal from "@/components/login/consent-modal";
 import { UserRole } from "@/types/user";
+
+const CONSENT_KEY = "vcf_consent_session";
 
 /* ── Validation Helpers ─────────────────────────────────── */
 
@@ -37,6 +39,13 @@ export default function LoginForm() {
   const [emailError, setEmailError]       = useState("");
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [touched, setTouched]             = useState({ email: false, password: false });
+
+  // Pre-fill consent if already accepted this session (from landing page modal)
+  useEffect(() => {
+    if (sessionStorage.getItem(CONSENT_KEY) === "true") {
+      setConsentGiven(true);
+    }
+  }, []);
 
   const welcomeMessage = selectedRole
     ? `WELCOME BACK, ${selectedRole.toUpperCase()}!`
@@ -238,20 +247,7 @@ export default function LoginForm() {
             )}
           </div>
 
-          {/* Consent note */}
-          <div
-            className="rounded-lg p-3 border"
-            style={{
-              backgroundColor: "var(--c-surface2)",
-              borderColor: "var(--c-border)",
-            }}
-          >
-            <p className="text-[11px] leading-relaxed" style={{ color: "var(--c-text-dim)" }}>
-              By logging in you agree to our Data Privacy policy in compliance with{" "}
-              <span style={{ color: "var(--c-text-muted)" }}>RA 10173</span>. You will be prompted to confirm
-              your consent before proceeding.
-            </p>
-          </div>
+
 
           {/* General error */}
           {error && (

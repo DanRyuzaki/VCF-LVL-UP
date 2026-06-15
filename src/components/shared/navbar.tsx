@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
 
-/* ── Moon SVG (shown in Dark mode → click to go Light) ── */
+
 function MoonIcon() {
   return (
     <svg
@@ -19,7 +19,7 @@ function MoonIcon() {
   );
 }
 
-/* ── Sun SVG (shown in Light mode → click to go Dark) ── */
+
 function SunIcon() {
   return (
     <svg
@@ -35,11 +35,11 @@ function SunIcon() {
       aria-label="Light mode — click for Dark mode"
     >
       <circle cx="12" cy="12" r="5" />
-      <line x1="12" y1="1"  x2="12" y2="3" />
+      <line x1="12" y1="1" x2="12" y2="3" />
       <line x1="12" y1="21" x2="12" y2="23" />
-      <line x1="4.22" y1="4.22"  x2="5.64" y2="5.64" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
       <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-      <line x1="1"  y1="12" x2="3"  y2="12" />
+      <line x1="1" y1="12" x2="3" y2="12" />
       <line x1="21" y1="12" x2="23" y2="12" />
       <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
       <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
@@ -70,23 +70,21 @@ export default function Navbar() {
       className="sticky top-0 z-50"
     >
       <div className="max-w-7xl mx-auto px-6 h-[60px] flex items-center justify-between">
-        {/* Logo */}
+        { }
         <Link href="/" className="flex items-center gap-2">
-          <span
-            className="font-head text-xl font-bold tracking-widest uppercase"
-            style={{ color: "var(--c-accent)" }}
-          >
-            VCF-LVL-UP
+          <span className="font-head text-xl font-bold tracking-widest uppercase">
+            <span style={{ color: isDark ? "#FFFFFF" : "#000000" }}>VCF: </span>
+            <span style={{ color: "var(--c-accent)" }}>LVL UP!</span>
           </span>
         </Link>
 
-        {/* Nav Links */}
+        { }
         <div className="hidden md:flex items-center gap-6">
           {[
-            { href: "#tournaments",   label: "Tournaments" },
+            { href: "#tournaments", label: "Tournaments" },
             { href: "#announcements", label: "Announcements" },
-            { href: "#matches",       label: "Matches" },
-            { href: "#livestream",    label: "Livestream" },
+            { href: "#matches", label: "Matches" },
+            { href: "#livestream", label: "Livestream" },
           ].map(({ href, label }) => (
             <a
               key={href}
@@ -105,9 +103,9 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Right side: Login + Theme Toggle */}
+        { }
         <div className="flex items-center gap-3">
-          {/* Login Button */}
+          { }
           <Link
             href="/login"
             className="text-white text-xs font-semibold uppercase tracking-widest px-5 py-2 rounded-md transition-colors"
@@ -115,18 +113,18 @@ export default function Navbar() {
               backgroundColor: "var(--c-accent)",
             }}
             onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.backgroundColor =
-                "var(--c-accent-hover)")
+            ((e.currentTarget as HTMLElement).style.backgroundColor =
+              "var(--c-accent-hover)")
             }
             onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.backgroundColor =
-                "var(--c-accent)")
+            ((e.currentTarget as HTMLElement).style.backgroundColor =
+              "var(--c-accent)")
             }
           >
             Login
           </Link>
 
-          {/* ── Theme Toggle Button (right of Login) ── */}
+          { }
           <button
             id="theme-toggle-btn"
             onClick={toggleTheme}

@@ -56,7 +56,7 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
     sidebarItems: [
       { label: "System Logs",    section: "logs",        icon: "terminal" },
       { label: "Error Reports",  section: "errors",      icon: "warning" },
-      { label: "User Metadata",  section: "metadata",    icon: "database" },
+      { label: "User Management", section: "metadata",    icon: "database" },
       { label: "Role Management",section: "roles",       icon: "lock" },
       { label: "Maintenance",    section: "maintenance", icon: "wrench" },
       { label: "CRM Records",    section: "crm",         icon: "folder" },

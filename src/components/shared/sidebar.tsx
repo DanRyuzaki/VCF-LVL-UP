@@ -38,15 +38,116 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
         }}
       >
         {/* ── NAV: flex-1 pushes profile to bottom ── */}
-        <div style={{ flex: 1, overflowY: "auto", paddingTop: "16px", paddingBottom: "8px" }}>
+        <div style={{ flex: 1, overflowY: "auto", paddingBottom: "8px" }}>
+
+          {/* ── BRANDED SIDEBAR HEADER ── */}
           <div
             style={{
-              fontSize: "10px",
+              padding: "20px 18px 16px 18px",
+              borderBottom: "1px solid var(--c-border)",
+              marginBottom: "4px",
+            }}
+          >
+            {/* Icon + Title row */}
+            <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
+              {/* Esports Gamepad SVG Icon */}
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "rgba(255,70,85,0.10)",
+                  border: "1.5px solid rgba(255,70,85,0.30)",
+                  flexShrink: 0,
+                  boxShadow: "0 0 12px rgba(255,70,85,0.15)",
+                }}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  {/* Controller body */}
+                  <path
+                    d="M6 10C6 7.79 7.79 6 10 6H14C16.21 6 18 7.79 18 10V14C18 16.21 16.21 18 14 18H10C7.79 18 6 16.21 6 14V10Z"
+                    stroke="#ff4655"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* D-pad vertical */}
+                  <line x1="9" y1="10.5" x2="9" y2="13.5" stroke="#ff4655" strokeWidth="1.5" strokeLinecap="round" />
+                  {/* D-pad horizontal */}
+                  <line x1="7.5" y1="12" x2="10.5" y2="12" stroke="#ff4655" strokeWidth="1.5" strokeLinecap="round" />
+                  {/* Action buttons */}
+                  <circle cx="15" cy="11" r="0.75" fill="#00d4ff" />
+                  <circle cx="14" cy="13" r="0.75" fill="#a855f7" />
+                  <circle cx="16" cy="13" r="0.75" fill="#ff4655" />
+                  {/* Left bumper */}
+                  <path d="M8 6.5C8 5.67 8.67 5 9.5 5H10.5" stroke="#ff4655" strokeWidth="1.2" strokeLinecap="round" />
+                  {/* Right bumper */}
+                  <path d="M16 6.5C16 5.67 15.33 5 14.5 5H13.5" stroke="#ff4655" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              </div>
+
+              {/* Title + Subtitle */}
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: "'Rajdhani', 'Teko', 'Montserrat', sans-serif",
+                    fontSize: "15px",
+                    fontWeight: 800,
+                    letterSpacing: "0.04em",
+                    lineHeight: 1.1,
+                    background: "linear-gradient(90deg, #ff4655 0%, #ff6b7a 40%, #00d4ff 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                    textShadow: "none",
+                    filter: "drop-shadow(0 0 6px rgba(255,70,85,0.45))",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  VCF: LVL UP!
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'Inter', 'Rajdhani', sans-serif",
+                    fontSize: "9.5px",
+                    fontWeight: 600,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "var(--c-text-dim)",
+                    marginTop: "3px",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  eSports Management
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── NAVIGATION SECTION LABEL ── */}
+          <div
+            style={{
+              fontSize: "9px",
+              fontFamily: "'Inter', sans-serif",
               textTransform: "uppercase",
-              letterSpacing: "2px",
+              letterSpacing: "0.2em",
+              fontWeight: 700,
               color: "var(--c-text-dim)",
-              padding: "0 20px",
-              marginBottom: "8px",
+              padding: "12px 20px 6px 20px",
+              opacity: 0.6,
             }}
           >
             Navigation
@@ -64,8 +165,10 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                     display: "flex",
                     alignItems: "center",
                     gap: "12px",
-                    padding: "10px 20px",
-                    fontSize: "14px",
+                    padding: "9px 20px",
+                    fontSize: "13px",
+                    fontFamily: "'Inter', 'Rajdhani', sans-serif",
+                    fontWeight: isActive ? 700 : 500,
                     textAlign: "left",
                     borderLeft: `2px solid ${isActive ? "var(--c-accent)" : "transparent"}`,
                     color: isActive ? "var(--c-accent)" : "var(--c-text-muted)",

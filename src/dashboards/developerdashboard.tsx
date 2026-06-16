@@ -6,19 +6,19 @@ import PageHeader from "@/components/shared/page-header";
 import UserManagementModule from "@/modules/user-management";
 
 const systemLogs = [
-  { time: "2025-06-12 14:02:11", type: "INFO",  msg: "User login: marco@faith.com [Organizer]" },
-  { time: "2025-06-12 14:01:55", type: "INFO",  msg: "Bracket generated: MLBB S4 — 8 teams" },
-  { time: "2025-06-12 13:58:30", type: "WARN",  msg: "Announcement submission queued — awaiting approval" },
+  { time: "2025-06-12 14:02:11", type: "INFO", msg: "User login: marco@faith.com [Organizer]" },
+  { time: "2025-06-12 14:01:55", type: "INFO", msg: "Bracket generated: MLBB S4 — 8 teams" },
+  { time: "2025-06-12 13:58:30", type: "WARN", msg: "Announcement submission queued — awaiting approval" },
   { time: "2025-06-12 13:45:22", type: "ERROR", msg: "Firebase Auth timeout — retry successful" },
-  { time: "2025-06-12 13:40:01", type: "INFO",  msg: "Match result submitted: Team Blaze 2-0 Team Storm" },
-  { time: "2025-06-12 13:22:44", type: "INFO",  msg: "Player drafted: Ana Lim → Team Frost" },
-  { time: "2025-06-12 13:15:09", type: "WARN",  msg: "Slow page load detected: /organizer/brackets (2.4s)" },
-  { time: "2025-06-12 12:59:55", type: "INFO",  msg: "User logout: admin@faith.com" },
+  { time: "2025-06-12 13:40:01", type: "INFO", msg: "Match result submitted: Team Blaze 2-0 Team Storm" },
+  { time: "2025-06-12 13:22:44", type: "INFO", msg: "Player drafted: Ana Lim → Team Frost" },
+  { time: "2025-06-12 13:15:09", type: "WARN", msg: "Slow page load detected: /organizer/brackets (2.4s)" },
+  { time: "2025-06-12 12:59:55", type: "INFO", msg: "User logout: admin@faith.com" },
 ];
 
 function logTypeColor(type: string) {
   if (type === "ERROR") return "#FF4655";
-  if (type === "WARN")  return "#EAB308";
+  if (type === "WARN") return "#EAB308";
   return "#00F5D4";
 }
 
@@ -29,7 +29,7 @@ function SystemLogsSection() {
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
-        {["ALL","INFO","WARN","ERROR"].map((f) => (
+        {["ALL", "INFO", "WARN", "ERROR"].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -60,12 +60,12 @@ function SystemLogsSection() {
 
 function ErrorReportsSection() {
   const errors = [
-    { time: "13:45:22", error: "Firebase Auth timeout",    page: "/login",               severity: "High"   },
+    { time: "13:45:22", error: "Firebase Auth timeout", page: "/login", severity: "High" },
     { time: "13:15:09", error: "Slow render: Bracket tree", page: "/organizer/brackets", severity: "Medium" },
-    { time: "10:22:01", error: "Missing livestream embed",  page: "/gamer/livestream",   severity: "Low"    },
+    { time: "10:22:01", error: "Missing livestream embed", page: "/gamer/livestream", severity: "Low" },
   ];
   const sevStyle = (s: string) => {
-    if (s === "High")   return "bg-[#FF4655]/20 text-[#FF4655]";
+    if (s === "High") return "bg-[#FF4655]/20 text-[#FF4655]";
     if (s === "Medium") return "bg-yellow-400/20 text-yellow-400";
     return "text-[#808080]";
   };
@@ -75,7 +75,7 @@ function ErrorReportsSection() {
     <div className="dash-table-wrap">
       <table className="w-full border-collapse">
         <thead className="dash-thead">
-          <tr>{["Time","Error","Page","Severity"].map((h) => <th key={h} className="dash-th">{h}</th>)}</tr>
+          <tr>{["Time", "Error", "Page", "Severity"].map((h) => <th key={h} className="dash-th">{h}</th>)}</tr>
         </thead>
         <tbody>
           {errors.map((e, i) => (
@@ -115,9 +115,9 @@ function RoleManagementSection() {
       <div className="dash-card p-5">
         <div className="dash-section-title">Account Actions</div>
         {[
-          { name: "John Dela Cruz", role: "Gamer", status: "active"    },
-          { name: "Ben Torres",     role: "Gamer", status: "suspended" },
-          { name: "Liza Cruz",      role: "Gamer", status: "active"    },
+          { name: "John Dela Cruz", role: "Gamer", status: "active" },
+          { name: "Ben Torres", role: "Gamer", status: "suspended" },
+          { name: "Liza Cruz", role: "Gamer", status: "active" },
         ].map((u) => (
           <div key={u.name} className="dash-row-item">
             <div>
@@ -137,12 +137,77 @@ function RoleManagementSection() {
 
 function MaintenanceSection() {
   const tools = [
-    { icon: "🗑️", label: "Clear Cache",     sub: "Flush system cache",          action: "Cache cleared!" },
-    { icon: "💾", label: "Backup Data",      sub: "Export Firestore snapshot",   action: "Backup initiated!" },
-    { icon: "❤️", label: "Health Check",     sub: "Run system diagnostics",      action: "All systems healthy." },
-    { icon: "📤", label: "Export Logs",      sub: "Download system log file",    action: "Logs exported!" },
-    { icon: "🔧", label: "Maintenance Mode", sub: "Toggle maintenance screen",   action: "Maintenance mode toggled." },
-    { icon: "🔄", label: "Restart Services", sub: "Restart background services", action: "Services restarting..." },
+    {
+      icon: (
+
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="4" stroke="#ff4655" strokeWidth="1.8" />
+          <line x1="12" y1="2" x2="12" y2="5" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
+          <line x1="12" y1="19" x2="12" y2="22" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
+          <line x1="2" y1="12" x2="5" y2="12" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
+          <line x1="19" y1="12" x2="22" y2="12" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
+          <line x1="4.93" y1="4.93" x2="7.05" y2="7.05" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
+          <line x1="16.95" y1="16.95" x2="19.07" y2="19.07" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
+          <line x1="4.93" y1="19.07" x2="7.05" y2="16.95" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
+          <line x1="16.95" y1="7.05" x2="19.07" y2="4.93" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      ),
+      label: "Clear Cache", sub: "Flush system cache", action: "Cache cleared!",
+    },
+    {
+      icon: (
+
+
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L4 6V12C4 16.42 7.48 20.58 12 22C16.52 20.58 20 16.42 20 12V6L12 2Z" stroke="#00d4ff" strokeWidth="1.7" strokeLinejoin="round" />
+          <polyline points="8.5 12 11 14.5 15.5 10" stroke="#00d4ff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+      label: "Backup Data", sub: "Export Firestore snapshot", action: "Backup initiated!",
+    },
+    {
+      icon: (
+
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="2 12 6 12 8 6 10 18 13 9 15 14 17 12 22 12" stroke="#a855f7" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+      label: "Health Check", sub: "Run system diagnostics", action: "All systems healthy.",
+    },
+    {
+      icon: (
+
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="3" width="18" height="18" rx="3" stroke="#00d4ff" strokeWidth="1.7" />
+          <line x1="7" y1="8" x2="12" y2="8" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="7" y1="12" x2="17" y2="12" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round" />
+          <polyline points="14 15 17 18 14 21" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <line x1="3" y1="18" x2="17" y2="18" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ),
+      label: "Export Logs", sub: "Download system log file", action: "Logs exported!",
+    },
+    {
+      icon: (
+
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2V12" stroke="#ff4655" strokeWidth="2" strokeLinecap="round" />
+          <path d="M6.34 5.64A8 8 0 1 0 17.66 5.64" stroke="#ff4655" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      ),
+      label: "Maintenance Mode", sub: "Toggle maintenance screen", action: "Maintenance mode toggled.",
+    },
+    {
+      icon: (
+
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 4v6h6" stroke="#00d4ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M20 20v-6h-6" stroke="#00d4ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M4.93 15A9 9 0 0 0 19.07 9M4.93 15l-3 3M19.07 9l3-3" stroke="#00d4ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+      label: "Restart Services", sub: "Restart background services", action: "Services restarting...",
+    },
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -153,7 +218,7 @@ function MaintenanceSection() {
           className="dash-card p-5 text-left transition-all"
           style={{ borderColor: t.label === "Maintenance Mode" ? "rgba(255,70,85,0.25)" : "var(--c-border)" }}
         >
-          <div className="text-2xl mb-2">{t.icon}</div>
+          <div className="mb-3">{t.icon}</div>
           <div className="font-semibold text-sm mb-1" style={{ color: t.label === "Maintenance Mode" ? "var(--c-accent)" : "var(--c-text)" }}>{t.label}</div>
           <div className="text-xs" style={{ color: "var(--c-text-dim)" }}>{t.sub}</div>
         </button>
@@ -171,13 +236,13 @@ function CrmSection() {
       <div className="dash-table-wrap">
         <table className="w-full border-collapse">
           <thead className="dash-thead">
-            <tr>{["Name","Type","Contact","Notes","Actions"].map((h) => <th key={h} className="dash-th">{h}</th>)}</tr>
+            <tr>{["Name", "Type", "Contact", "Notes", "Actions"].map((h) => <th key={h} className="dash-th">{h}</th>)}</tr>
           </thead>
           <tbody>
             {[
-              { name: "Word Baptist Church HQ", type: "Ministry", contact: "admin@wbc.org",  note: "Main organization", tc: "bg-[#8B5CF6]/20 text-[#8B5CF6]" },
-              { name: "Youth Ministry Group A", type: "Group",    contact: "youth@wbc.org",  note: "MLBB division",     tc: "bg-[#00F5D4]/15 text-[#00F5D4]" },
-              { name: "Youth Ministry Group B", type: "Group",    contact: "youth2@wbc.org", note: "CODM division",     tc: "bg-[#00F5D4]/15 text-[#00F5D4]" },
+              { name: "Word Baptist Church HQ", type: "Ministry", contact: "admin@wbc.org", note: "Main organization", tc: "bg-[#8B5CF6]/20 text-[#8B5CF6]" },
+              { name: "Youth Ministry Group A", type: "Group", contact: "youth@wbc.org", note: "MLBB division", tc: "bg-[#00F5D4]/15 text-[#00F5D4]" },
+              { name: "Youth Ministry Group B", type: "Group", contact: "youth2@wbc.org", note: "CODM division", tc: "bg-[#00F5D4]/15 text-[#00F5D4]" },
             ].map((r) => (
               <tr key={r.name} className="dash-tr">
                 <td className="dash-td font-medium">{r.name}</td>
@@ -195,12 +260,12 @@ function CrmSection() {
 }
 
 const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
-  logs:        { title: "SYSTEM LOGS",     subtitle: "Client-side activity and event logs" },
-  errors:      { title: "ERROR REPORTS",   subtitle: "Client-side error tracking" },
-  metadata:    { title: "USER METADATA",   subtitle: "Account records and role data" },
-  roles:       { title: "ROLE MANAGEMENT", subtitle: "Manage admins and suspend / restore accounts" },
-  maintenance: { title: "MAINTENANCE",     subtitle: "System utilities and maintenance tools" },
-  crm:         { title: "CRM RECORDS",     subtitle: "Manage church and ministry records" },
+  logs: { title: "SYSTEM LOGS", subtitle: "Client-side activity and event logs" },
+  errors: { title: "ERROR REPORTS", subtitle: "Client-side error tracking" },
+  metadata: { title: "USER MANAGEMENT", subtitle: "Account records and role data" },
+  roles: { title: "ROLE MANAGEMENT", subtitle: "Manage admins and suspend / restore accounts" },
+  maintenance: { title: "MAINTENANCE", subtitle: "System utilities and maintenance tools" },
+  crm: { title: "CRM RECORDS", subtitle: "Manage church and ministry records" },
 };
 
 export default function DeveloperDashboard() {
@@ -209,13 +274,13 @@ export default function DeveloperDashboard() {
 
   const renderSection = () => {
     switch (section) {
-      case "logs":        return <SystemLogsSection />;
-      case "errors":      return <ErrorReportsSection />;
-      case "metadata":    return <UserManagementModule />;
-      case "roles":       return <RoleManagementSection />;
+      case "logs": return <SystemLogsSection />;
+      case "errors": return <ErrorReportsSection />;
+      case "metadata": return <UserManagementModule />;
+      case "roles": return <RoleManagementSection />;
       case "maintenance": return <MaintenanceSection />;
-      case "crm":         return <CrmSection />;
-      default:            return null;
+      case "crm": return <CrmSection />;
+      default: return null;
     }
   };
 

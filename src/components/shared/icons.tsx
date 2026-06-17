@@ -194,12 +194,37 @@ export function IconMenu({ className = "", size = 16, style }: IconProps) {
   );
 }
 
+export function IconChat({ className = "", size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+export function IconInfo({ className = "", size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  );
+}
+
+export function IconHourglass({ className = "", size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M5 2h14" /><path d="M5 22h14" /><path d="M19 2v4c0 3.25-2.22 6-5 6 2.78 0 5 2.75 5 6v4" /><path d="M5 2v4c0 3.25 2.22 6 5 6-2.78 0-5 2.75-5 6v4" />
+    </svg>
+  );
+}
+
 const ICON_MAP: Record<string, (p: IconProps) => JSX.Element> = {
   user: IconUser, team: IconUsers, calendar: IconCalendar, trophy: IconTrophy,
   bracket: IconBracket, bell: IconBell, video: IconVideo, chart: IconChart,
   check: IconCheck, target: IconTarget, report: IconReport, terminal: IconTerminal,
   warning: IconWarning, database: IconDatabase, lock: IconLock, wrench: IconWrench,
-  folder: IconFolder, users: IconUsers,
+  folder: IconFolder, users: IconUsers, chat: IconChat, info: IconInfo,
+  drafting: IconHourglass, standings: IconTrophy, confirm_participation: IconCheck,
 };
 
 export function DynamicIcon({ name, ...props }: IconProps & { name: string }) {

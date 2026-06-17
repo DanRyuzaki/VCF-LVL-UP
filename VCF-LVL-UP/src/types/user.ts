@@ -1,4 +1,4 @@
-export type UserRole = "developer" | "admin" | "organizer" | "gamer" |"drafted_gamer" | "free_agent";
+export type UserRole = "developer" | "admin" | "organizer" | "gamer";
 
 
 export type GamerType = "team_leader" | "team_member" | "free_agent";

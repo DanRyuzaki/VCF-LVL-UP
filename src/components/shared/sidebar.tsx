@@ -8,12 +8,18 @@ interface SidebarProps {
   role: UserRole;
   activeSection: string;
   onSectionChange: (section: string) => void;
+  customItems?: { label: string; section: string; icon: string }[];
+  customLabel?: string;
+  customColor?: string;
 }
 
-export default function Sidebar({ role, activeSection, onSectionChange }: SidebarProps) {
+export default function Sidebar({ role, activeSection, onSectionChange, customItems, customLabel, customColor }: SidebarProps) {
   const config = ROLE_CONFIG[role];
+  const items = customItems || config.sidebarItems;
+  const label = customLabel || config.label;
+  const color = customColor || config.color;
 
-  const initials = config.label
+  const initials = label
     .split(" ")
     .map((w: string) => w[0])
     .join("")
@@ -154,7 +160,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
           </div>
 
           <nav>
-            {config.sidebarItems.map((item: { section: string; icon: string; label: string }) => {
+            {items.map((item: { section: string; icon: string; label: string }) => {
               const isActive = activeSection === item.section;
               return (
                 <button
@@ -235,13 +241,13 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.1em",
-                  color: config.color,
+                  color: color,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                 }}
               >
-                {config.label}
+                {label}
               </div>
               <div
                 style={{
@@ -255,7 +261,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                   textOverflow: "ellipsis",
                 }}
               >
-                Logged in as {config.label}
+                Logged in as {label}
               </div>
             </div>
           </div>

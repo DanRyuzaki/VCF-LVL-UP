@@ -28,4 +28,7 @@ export interface Livestream {
   url: string;
   status: "live" | "scheduled" | "ended";
   tournamentName: string;
+  platform?: string;
+  schedule?: string;
+  title?: string;
 }

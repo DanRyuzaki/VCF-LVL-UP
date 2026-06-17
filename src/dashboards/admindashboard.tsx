@@ -187,7 +187,7 @@ export default function AdminDashboard() {
     switch (section) {
       case "overview": return <OverviewSection />;
       case "approvals": return <ApprovalsSection />;
-      case "users": return <UserManagementModule />;
+      case "users": return <UserManagementModule context="admin" />;
       case "tournaments": return <TournamentMonitorSection />;
       case "livestream": return <LivestreamManagementModule showManageControls />;
       case "calendar": return <CalendarManagementModule showSubmitForm showApproveActions />;

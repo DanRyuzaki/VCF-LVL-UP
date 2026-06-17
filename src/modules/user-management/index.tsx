@@ -39,7 +39,7 @@ export default function UserManagementModule() {
               paddingTop: "8px",
               paddingBottom: "8px",
               width: "220px",
-              fontSize: "13px",
+              fontSize: "0.8125rem",
               backgroundColor: "var(--c-surface2)",
               border: "1px solid var(--c-border)",
               borderRadius: "8px",

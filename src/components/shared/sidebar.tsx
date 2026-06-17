@@ -3,6 +3,36 @@ import Link from "next/link";
 import { DynamicIcon, IconLogout } from "@/components/shared/icons";
 import { UserRole } from "@/types/user";
 import { ROLE_CONFIG } from "@/lib/roles";
+import { useTheme } from "@/lib/theme-context";
+import { useFontSize, FontSizeLevel } from "@/lib/font-size-context";
+
+const FONT_SIZE_LABELS: Record<FontSizeLevel, string> = {
+  1: "Small",
+  2: "Normal",
+  3: "Large",
+  4: "Huge",
+};
+
+function MoonIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
 
 interface SidebarProps {
   role: UserRole;
@@ -11,6 +41,15 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ role, activeSection, onSectionChange }: SidebarProps) {
+  const { theme, toggleTheme } = useTheme();
+  const { fontSize, setFontSize } = useFontSize();
+  const isDark = theme === "dark";
+
+  // Cycle through sizes: 1 → 2 → 3 → 4 → 1
+  const cycleFont = () => {
+    const next = (fontSize % 4) + 1 as FontSizeLevel;
+    setFontSize(next);
+  };
   const config = ROLE_CONFIG[role];
 
   const initials = config.label
@@ -100,7 +139,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                 <div
                   style={{
                     fontFamily: "'Rajdhani', 'Teko', 'Montserrat', sans-serif",
-                    fontSize: "15px",
+                    fontSize: "0.9375rem",
                     fontWeight: 800,
                     letterSpacing: "0.04em",
                     lineHeight: 1.1,
@@ -120,7 +159,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                 <div
                   style={{
                     fontFamily: "'Inter', 'Rajdhani', sans-serif",
-                    fontSize: "9.5px",
+                    fontSize: "0.59375rem",
                     fontWeight: 600,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
@@ -140,7 +179,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
           {/* ── NAVIGATION SECTION LABEL ── */}
           <div
             style={{
-              fontSize: "9px",
+              fontSize: "0.5625rem",
               fontFamily: "'Inter', sans-serif",
               textTransform: "uppercase",
               letterSpacing: "0.2em",
@@ -166,7 +205,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                     alignItems: "center",
                     gap: "12px",
                     padding: "9px 20px",
-                    fontSize: "13px",
+                    fontSize: "0.8125rem",
                     fontFamily: "'Inter', 'Rajdhani', sans-serif",
                     fontWeight: isActive ? 700 : 500,
                     textAlign: "left",
@@ -217,7 +256,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                 alignItems: "center",
                 justifyContent: "center",
                 fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "13px",
+                fontSize: "0.8125rem",
                 fontWeight: 700,
                 flexShrink: 0,
                 backgroundColor: "rgba(255,70,85,0.12)",
@@ -231,7 +270,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
             <div style={{ minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: "12px",
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.1em",
@@ -245,7 +284,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
               </div>
               <div
                 style={{
-                  fontSize: "10px",
+                  fontSize: "0.625rem",
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
                   color: "var(--c-text-dim)",
@@ -260,6 +299,51 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
             </div>
           </div>
 
+          {/* ── THEME + FONT SIZE controls ── */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+            {/* Theme toggle */}
+            <button
+              id="sidebar-theme-toggle"
+              onClick={toggleTheme}
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: "34px", height: "34px", borderRadius: "8px", flexShrink: 0,
+                border: `1px solid ${isDark ? "#2E2E2E" : "#D4D4D8"}`,
+                backgroundColor: isDark ? "#1A1A1A" : "#F0F0F2",
+                color: isDark ? "#FFD700" : "#F59E0B",
+                cursor: "pointer", transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            >
+              {isDark ? <MoonIcon /> : <SunIcon />}
+            </button>
+
+            {/* Font size cycle button — 1 click = next size */}
+            <button
+              id="sidebar-font-size-btn"
+              onClick={cycleFont}
+              title={`Font Size: ${FONT_SIZE_LABELS[fontSize]} — click to go bigger`}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                flex: 1, height: "34px", borderRadius: "8px",
+                border: `1px solid ${isDark ? "#2E2E2E" : "#D4D4D8"}`,
+                backgroundColor: isDark ? "#1A1A1A" : "#F0F0F2",
+                color: "var(--c-text-dim)", cursor: "pointer",
+                padding: "0 10px", gap: "6px", transition: "all 0.2s ease",
+                boxSizing: "border-box",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--c-accent)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = isDark ? "#2E2E2E" : "#D4D4D8"; }}
+            >
+              <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Aa</span>
+              <span style={{ fontSize: "10px", color: "var(--c-accent)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                {FONT_SIZE_LABELS[fontSize]}
+              </span>
+            </button>
+          </div>
+
           {/* Sign Out — full width matching sidebar padding */}
           <Link
             href="/login"
@@ -270,7 +354,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
               gap: "8px",
               width: "100%",
               padding: "8px 12px",
-              fontSize: "11px",
+              fontSize: "0.6875rem",
               textTransform: "uppercase",
               letterSpacing: "0.12em",
               fontWeight: 500,

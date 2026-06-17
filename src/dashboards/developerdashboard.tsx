@@ -3,6 +3,7 @@ import { useState } from "react";
 import Sidebar from "@/components/shared/sidebar";
 import StatCard from "@/components/shared/stat-card";
 import PageHeader from "@/components/shared/page-header";
+import DashboardHeader from "@/components/shared/dashboard-header";
 import UserManagementModule from "@/modules/user-management";
 
 const systemLogs = [
@@ -287,18 +288,20 @@ export default function DeveloperDashboard() {
   return (
     <div className="flex">
       <Sidebar role="developer" activeSection={section} onSectionChange={setSection} />
-      <main
-        className="flex-1"
-        style={{
-          minHeight: "calc(100vh - 60px)",
-          overflowY: "auto",
-          padding: "32px",
-          backgroundColor: "var(--c-page-bg)",
-        }}
-      >
-        <PageHeader title={meta.title} subtitle={meta.subtitle} />
-        {renderSection()}
-      </main>
+      <div className="flex-1 flex flex-col min-h-screen">
+        <DashboardHeader role="developer" />
+        <main
+          className="flex-1"
+          style={{
+            overflowY: "auto",
+            padding: "32px",
+            backgroundColor: "var(--c-page-bg)",
+          }}
+        >
+          <PageHeader title={meta.title} subtitle={meta.subtitle} />
+          {renderSection()}
+        </main>
+      </div>
     </div>
   );
 }

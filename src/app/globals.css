@@ -59,6 +59,37 @@
   --c-scrollbar-thumb-hover: #A0A0A8;
 }
 
+/* ─── HIGH CONTRAST OVERRIDES ─── */
+[data-contrast="high"] {
+  --brand-border: #FFFFFF !important;
+  --c-page-bg:    #000000 !important;
+  --c-surface:    #000000 !important;
+  --c-surface2:   #0D0D0D !important;
+  --c-surface3:   #1A1A1A !important;
+  --c-border:     #FFFFFF !important;
+  --c-border2:    #FFFFFF !important;
+  --c-text:       #FFFFFF !important;
+  --c-text-muted: #FFFFFF !important;
+  --c-text-dim:   #E0E0E0 !important;
+  --c-accent:     #FF3344 !important;
+  --c-accent-hover: #FF5566 !important;
+}
+
+[data-theme="light"][data-contrast="high"] {
+  --brand-border: #000000 !important;
+  --c-page-bg:    #FFFFFF !important;
+  --c-surface:    #FFFFFF !important;
+  --c-surface2:   #F0F0F0 !important;
+  --c-surface3:   #E5E5E5 !important;
+  --c-border:     #000000 !important;
+  --c-border2:    #000000 !important;
+  --c-text:       #000000 !important;
+  --c-text-muted: #000000 !important;
+  --c-text-dim:   #222222 !important;
+  --c-accent:     #D00010 !important;
+  --c-accent-hover: #A0000B !important;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {

@@ -2,38 +2,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
-import { useFontSize, FontSizeLevel } from "@/lib/font-size-context";
 import { useState, useRef, useEffect } from "react";
-
-const FONT_SIZE_LABELS: Record<FontSizeLevel, string> = {
-  1: "Small",
-  2: "Normal",
-  3: "Large",
-  4: "Huge",
-};
-
-function FontSizeIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-label="Font size controls"
-    >
-      <path d="M4 18L9 5L14 18" />
-      <path d="M6 14H12" />
-      <path d="M18 18V13a2 2 0 0 0-2-2h-1M15 18h4" />
-      <circle cx="17" cy="16" r="2" />
-    </svg>
-  );
-}
-
+import AccessibilityPopover from "./accessibility-popover";
 
 function MoonIcon() {
   return (
@@ -81,33 +51,7 @@ function SunIcon() {
 export default function Navbar() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
-  const { fontSize, setFontSize } = useFontSize();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
 
   const isDashboard =
     pathname.startsWith("/gamer") ||
@@ -200,123 +144,7 @@ export default function Navbar() {
             {isDark ? <MoonIcon /> : <SunIcon />}
           </button>
 
-          { }
-          <div className="relative inline-block text-left" ref={dropdownRef}>
-            <button
-              id="font-size-toggle-btn"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              title="Adjust Font Size"
-              aria-label="Adjust Font Size"
-              className="flex items-center justify-center rounded-lg border transition-all duration-200 hover:scale-110 active:scale-95"
-              style={{
-                width: "36px",
-                height: "36px",
-                backgroundColor: isDark ? "#1A1A1A" : "#F0F0F2",
-                borderColor: isDark ? "#2E2E2E" : "#D4D4D8",
-                color: isDark ? "#00F5D4" : "#00C4AA",
-              }}
-            >
-              <FontSizeIcon />
-            </button>
-
-            {isDropdownOpen && (
-              <div
-                className="absolute right-0 border shadow-xl flex flex-col z-50 animate-in fade-in slide-in-from-top-2 duration-200"
-                style={{
-                  marginTop: "8px",
-                  padding: "16px",
-                  borderRadius: "12px",
-                  minWidth: "238px",
-                  gap: "14px",
-                  backgroundColor: isDark ? "#121212" : "#FFFFFF",
-                  borderColor: isDark ? "#2E2E2E" : "#E4E4E7",
-                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
-                }}
-              >
-                <div
-                  className="flex justify-between items-center font-bold uppercase tracking-widest"
-                  style={{
-                    color: "var(--c-text-dim)",
-                    fontSize: "10px",
-                  }}
-                >
-                  <span>Font Size</span>
-                  <span style={{ color: "var(--c-accent)" }}>{FONT_SIZE_LABELS[fontSize]}</span>
-                </div>
-
-                <div
-                  className="flex justify-between items-center"
-                  style={{
-                    gap: "8px",
-                    paddingTop: "2px",
-                    paddingBottom: "2px",
-                  }}
-                >
-                  {([1, 2, 3, 4] as FontSizeLevel[]).map((level) => {
-                    const isActive = fontSize === level;
-                    const innerFontSize = { 1: "11px", 2: "13px", 3: "16px", 4: "19px" }[level];
-                    return (
-                      <button
-                        key={level}
-                        onClick={() => setFontSize(level)}
-                        className="flex flex-col items-center gap-1.5 group"
-                        style={{
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          outline: "none",
-                          padding: "0",
-                          flex: 1,
-                        }}
-                      >
-                        <div
-                          className="flex items-center justify-center rounded-xl border transition-all duration-200"
-                          style={{
-                            width: "42px",
-                            height: "42px",
-                            backgroundColor: isActive
-                              ? "var(--c-accent)"
-                              : isDark
-                              ? "#1A1A1A"
-                              : "#F0F0F2",
-                            borderColor: isActive
-                              ? "var(--c-accent)"
-                              : isDark
-                              ? "#2E2E2E"
-                              : "#D4D4D8",
-                            color: isActive ? "#FFFFFF" : "var(--c-text)",
-                            boxShadow: isActive ? "0 0 10px rgba(255, 70, 85, 0.4)" : "none",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: innerFontSize,
-                              fontWeight: "bold",
-                              transition: "transform 0.15s ease",
-                            }}
-                            className="group-hover:scale-110"
-                          >
-                            A
-                          </span>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: "8px",
-                            fontWeight: 800,
-                            letterSpacing: "0.5px",
-                            textTransform: "uppercase",
-                            color: isActive ? "var(--c-accent)" : "var(--c-text-dim)",
-                          }}
-                        >
-                          {FONT_SIZE_LABELS[level]}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          <AccessibilityPopover />
         </div>
       </div>
     </nav>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme-context";
+import { FontSizeProvider } from "@/lib/font-size-context";
 
 export const metadata: Metadata = {
   title: "VCF-LVL-UP — Youth eSports Management",
@@ -10,9 +11,26 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme="dark">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem("vcf-lvl-up-theme");
+                  var theme = saved || "dark";
+                  document.documentElement.setAttribute("data-theme", theme);
+                } catch (e) {}
+              })();
+            `
+          }}
+        />
+      </head>
       <body>
         <ThemeProvider>
-          {children}
+          <FontSizeProvider>
+            {children}
+          </FontSizeProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -101,7 +101,7 @@ export default function LoginForm() {
     border: `1px solid ${hasError ? "#EF4444" : "var(--c-border)"}`,
     borderRadius: "8px",
     padding: "10px 14px",
-    fontSize: "14px",
+    fontSize: "0.875rem",
     color: "var(--c-text)",
     outline: "none",
     transition: "border-color 0.2s",
@@ -123,7 +123,7 @@ export default function LoginForm() {
         {/* Logo */}
         <div className="text-center mb-6">
           <div className="font-head text-2xl font-bold tracking-widest uppercase mb-1">
-            <span style={{ color: isDark ? "#FFFFFF" : "#000000" }}>VCF: </span>
+            <span style={{ color: "var(--c-text)" }}>VCF: </span>
             <span style={{ color: "var(--c-accent)" }}>LVL UP!</span>
           </div>
           <h2

@@ -1,71 +1,126 @@
 "use client";
-import Link from "next/link";
-import { DynamicIcon, IconLogout } from "@/components/shared/icons";
+import { useState } from "react";
 import { UserRole } from "@/types/user";
-import { ROLE_CONFIG } from "@/lib/roles";
 
-interface SidebarProps {
-  role: UserRole;
-  activeSection: string;
-  onSectionChange: (section: string) => void;
+interface RoleSelectorProps {
+  selected: UserRole | null;
+  onSelect: (role: UserRole) => void;
 }
 
-export default function Sidebar({ role, activeSection, onSectionChange }: SidebarProps) {
-  const config = ROLE_CONFIG[role];
+const roles: { role: UserRole; label: string; icon: React.ReactNode }[] = [
+  {
+    role: "organizer",
+    label: "Organizer",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
+      </svg>
+    ),
+  },
+  {
+    role: "admin",
+    label: "Admin",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+    ),
+  },
+  {
+    role: "developer",
+    label: "Developer",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+      </svg>
+    ),
+  },
+];
+
+const gamerIcon = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="6" width="20" height="12" rx="2" /><line x1="6" y1="12" x2="10" y2="12" /><line x1="8" y1="10" x2="8" y2="14" /><circle cx="16" cy="11" r="1" fill="currentColor" /><circle cx="18" cy="13" r="1" fill="currentColor" />
+  </svg>
+);
+
+export default function RoleSelector({ selected, onSelect }: RoleSelectorProps) {
+  const currentRole = selected as string;
+  const [showGamerSubRoles, setShowGamerSubRoles] = useState(
+    currentRole === "drafted_gamer" || currentRole === "free_agent"
+  );
+
+  const handleGamerClick = () => {
+    setShowGamerSubRoles(true);
+  };
+
+  const isGamerActive = currentRole === "drafted_gamer" || currentRole === "free_agent";
 
   return (
-    <aside className="w-[220px] min-h-[calc(100vh-60px)] bg-[#121212] border-r border-[#2E2E2E] flex flex-col shrink-0">
-      <div className="flex-1 py-6">
-        {/* Role Badge */}
-        <div className="px-5 mb-5">
-          <div className="text-[10px] uppercase tracking-[2px] text-[#808080] mb-1">Role</div>
-          <div
-            className="text-sm font-semibold uppercase tracking-wider"
-            style={{ color: config.color }}
-          >
-            {config.label}
-          </div>
-        </div>
-
-        <div className="h-px bg-[#2E2E2E] mb-4 mx-5" />
-
-        {/* Nav items */}
-        <div className="px-0">
-          <div className="text-[10px] uppercase tracking-[2px] text-[#808080] px-5 mb-2">
-            Navigation
-          </div>
-          {config.sidebarItems.map((item) => {
-            const isActive = activeSection === item.section;
-            return (
-              <button
-                key={item.section}
-                onClick={() => onSectionChange(item.section)}
-                className={`w-full flex items-center gap-3 px-5 py-[10px] text-sm transition-all border-l-2 text-left ${
-                  isActive
-                    ? "border-[#FF4655] text-[#FF4655] bg-[#FF4655]/[0.06]"
-                    : "border-transparent text-[#B8B8B8] hover:text-white hover:bg-white/[0.03]"
-                }`}
-              >
-                <DynamicIcon name={item.icon} size={15} />
-                <span className="tracking-wide">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="p-5 border-t border-[#2E2E2E]">
-        <div className="text-[10px] text-[#808080] uppercase tracking-wider mb-1">Logged in as</div>
-        <div className="text-sm font-medium mb-3">{config.label}</div>
-        <Link
-          href="/login"
-          className="w-full flex items-center justify-center gap-2 border border-[#2E2E2E] text-[#808080] hover:text-white hover:border-[#808080] text-xs uppercase tracking-widest px-3 py-2 rounded-md transition-all"
+    <div className="grid grid-cols-2 gap-2 mb-6">
+      {!showGamerSubRoles ? (
+        <button
+          type="button"
+          onClick={handleGamerClick}
+          className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-all text-left ${
+            isGamerActive
+              ? "border-[#FF4655] text-[#FF4655] bg-[#FF4655]/[0.08]"
+              : "border-[#2E2E2E] text-[#B8B8B8] bg-[#1A1A1A] hover:border-[#FF4655]/50 hover:text-white"
+          }`}
         >
-          <IconLogout size={13} />
-          Sign Out
-        </Link>
-      </div>
-    </aside>
+          <span className={isGamerActive ? "text-[#FF4655]" : "text-[#808080]"}>{gamerIcon}</span>
+          <span className="font-medium uppercase tracking-wider text-xs">Gamer</span>
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => onSelect("drafted_gamer" as UserRole)}
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-all text-left ${
+              currentRole === "drafted_gamer"
+                ? "border-[#FF4655] text-[#FF4655] bg-[#FF4655]/[0.08]"
+                : "border-[#2E2E2E] text-[#B8B8B8] bg-[#1A1A1A] hover:border-[#FF4655]/50 hover:text-white"
+            }`}
+          >
+            <span className={currentRole === "drafted_gamer" ? "text-[#FF4655]" : "text-[#808080]"}>{gamerIcon}</span>
+            <span className="font-medium uppercase tracking-wider text-xs">Drafted Gamer</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelect("free_agent" as UserRole)}
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-all text-left ${
+              currentRole === "free_agent"
+                ? "border-[#FF4655] text-[#FF4655] bg-[#FF4655]/[0.08]"
+                : "border-[#2E2E2E] text-[#B8B8B8] bg-[#1A1A1A] hover:border-[#FF4655]/50 hover:text-white"
+            }`}
+          >
+            <span className={currentRole === "free_agent" ? "text-[#FF4655]" : "text-[#808080]"}>{gamerIcon}</span>
+            <span className="font-medium uppercase tracking-wider text-xs">Free Agent</span>
+          </button>
+        </>
+      )}
+
+      {roles.map(({ role, label, icon }) => {
+        const isActive = selected === role;
+        return (
+          <button
+            key={role}
+            type="button"
+            onClick={() => {
+              setShowGamerSubRoles(false);
+              onSelect(role);
+            }}
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-all text-left ${
+              isActive
+                ? "border-[#FF4655] text-[#FF4655] bg-[#FF4655]/[0.08]"
+                : "border-[#2E2E2E] text-[#B8B8B8] bg-[#1A1A1A] hover:border-[#FF4655]/50 hover:text-white"
+            }`}
+          >
+            <span className={isActive ? "text-[#FF4655]" : "text-[#808080]"}>{icon}</span>
+            <span className="font-medium uppercase tracking-wider text-xs">{label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

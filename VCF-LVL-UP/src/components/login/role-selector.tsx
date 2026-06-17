@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { UserRole } from "@/types/user";
 
 interface RoleSelectorProps {
@@ -7,15 +8,6 @@ interface RoleSelectorProps {
 }
 
 const roles: { role: UserRole; label: string; icon: React.ReactNode }[] = [
-  {
-    role: "gamer",
-    label: "Gamer",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="6" width="20" height="12" rx="2" /><line x1="6" y1="12" x2="10" y2="12" /><line x1="8" y1="10" x2="8" y2="14" /><circle cx="16" cy="11" r="1" fill="currentColor" /><circle cx="18" cy="13" r="1" fill="currentColor" />
-      </svg>
-    ),
-  },
   {
     role: "organizer",
     label: "Organizer",
@@ -45,16 +37,79 @@ const roles: { role: UserRole; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
+const gamerIcon = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="6" width="20" height="12" rx="2" /><line x1="6" y1="12" x2="10" y2="12" /><line x1="8" y1="10" x2="8" y2="14" /><circle cx="16" cy="11" r="1" fill="currentColor" /><circle cx="18" cy="13" r="1" fill="currentColor" />
+  </svg>
+);
+
 export default function RoleSelector({ selected, onSelect }: RoleSelectorProps) {
+  const currentRole = selected as string;
+  const [showGamerSubRoles, setShowGamerSubRoles] = useState(
+    currentRole === "drafted_gamer" || currentRole === "free_agent"
+  );
+
+  const handleGamerClick = () => {
+    setShowGamerSubRoles(true);
+  };
+
+  const isGamerActive = currentRole === "drafted_gamer" || currentRole === "free_agent";
+
   return (
     <div className="grid grid-cols-2 gap-2 mb-6">
+      {!showGamerSubRoles ? (
+        <button
+          type="button"
+          onClick={handleGamerClick}
+          className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-all text-left ${
+            isGamerActive
+              ? "border-[#FF4655] text-[#FF4655] bg-[#FF4655]/[0.08]"
+              : "border-[#2E2E2E] text-[#B8B8B8] bg-[#1A1A1A] hover:border-[#FF4655]/50 hover:text-white"
+          }`}
+        >
+          <span className={isGamerActive ? "text-[#FF4655]" : "text-[#808080]"}>{gamerIcon}</span>
+          <span className="font-medium uppercase tracking-wider text-xs">Gamer</span>
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => onSelect("drafted_gamer" as UserRole)}
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-all text-left ${
+              currentRole === "drafted_gamer"
+                ? "border-[#FF4655] text-[#FF4655] bg-[#FF4655]/[0.08]"
+                : "border-[#2E2E2E] text-[#B8B8B8] bg-[#1A1A1A] hover:border-[#FF4655]/50 hover:text-white"
+            }`}
+          >
+            <span className={currentRole === "drafted_gamer" ? "text-[#FF4655]" : "text-[#808080]"}>{gamerIcon}</span>
+            <span className="font-medium uppercase tracking-wider text-xs">Drafted Gamer</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelect("free_agent" as UserRole)}
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-all text-left ${
+              currentRole === "free_agent"
+                ? "border-[#FF4655] text-[#FF4655] bg-[#FF4655]/[0.08]"
+                : "border-[#2E2E2E] text-[#B8B8B8] bg-[#1A1A1A] hover:border-[#FF4655]/50 hover:text-white"
+            }`}
+          >
+            <span className={currentRole === "free_agent" ? "text-[#FF4655]" : "text-[#808080]"}>{gamerIcon}</span>
+            <span className="font-medium uppercase tracking-wider text-xs">Free Agent</span>
+          </button>
+        </>
+      )}
+
       {roles.map(({ role, label, icon }) => {
         const isActive = selected === role;
         return (
           <button
             key={role}
             type="button"
-            onClick={() => onSelect(role)}
+            onClick={() => {
+              setShowGamerSubRoles(false);
+              onSelect(role);
+            }}
             className={`flex items-center gap-2.5 px-4 py-3 rounded-lg border text-sm transition-all text-left ${
               isActive
                 ? "border-[#FF4655] text-[#FF4655] bg-[#FF4655]/[0.08]"

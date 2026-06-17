@@ -9,11 +9,13 @@ import LivestreamManagementModule from "@/modules/livestream-management";
 import { matches } from "@/data/matches";
 import { IconPlay } from "@/components/shared/icons";
 
+
 function ProfileSection() {
   const [editing, setEditing] = useState(false);
   const [name, setName]       = useState("John Dela Cruz");
   const [ign, setIgn]         = useState("JohnDC_MLBB");
   const [phone, setPhone]     = useState("+63 912 345 6789");
+
 
   return (
     <div className="space-y-5">
@@ -26,11 +28,13 @@ function ProfileSection() {
         </div>
       </div>
 
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard value="Team Blaze" label="Current Team" accent="teal" />
         <StatCard value="MLBB" label="Game" />
         <StatCard value="4/5" label="Roster Filled" accent="red" />
       </div>
+
 
       <div className="bg-[#1A1A1A] border border-[#2E2E2E] rounded-lg p-5">
         <div className="flex items-center justify-between mb-4">
@@ -59,6 +63,7 @@ function ProfileSection() {
     </div>
   );
 }
+
 
 function TeamSection() {
   const roster = [
@@ -94,6 +99,7 @@ function TeamSection() {
   );
 }
 
+
 function ScheduleSection() {
   const upcoming = matches.filter((m) => m.status === "pending");
   return (
@@ -124,6 +130,7 @@ function ScheduleSection() {
   );
 }
 
+
 const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   profile:       { title: "MY PROFILE",       subtitle: "View and update your player profile" },
   team:          { title: "MY TEAM",           subtitle: "Team information and roster" },
@@ -133,9 +140,11 @@ const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   livestream:    { title: "LIVESTREAM",         subtitle: "Watch live matches" },
 };
 
+
 export default function GamerDashboard() {
   const [section, setSection] = useState("profile");
   const meta = SECTION_TITLES[section] ?? { title: section.toUpperCase(), subtitle: "" };
+
 
   const renderSection = () => {
     switch (section) {
@@ -149,6 +158,7 @@ export default function GamerDashboard() {
     }
   };
 
+
   return (
     <div className="flex min-h-[calc(100vh-60px)]">
       <Sidebar role="gamer" activeSection={section} onSectionChange={setSection} />
@@ -159,3 +169,6 @@ export default function GamerDashboard() {
     </div>
   );
 }
+
+
+

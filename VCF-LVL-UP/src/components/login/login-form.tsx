@@ -5,6 +5,7 @@ import RoleSelector from "@/components/login/role-selector";
 import ConsentModal from "@/components/login/consent-modal";
 import { UserRole } from "@/types/user";
 
+
 export default function LoginForm() {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -14,9 +15,11 @@ export default function LoginForm() {
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
 
+
   const welcomeMessage = selectedRole
     ? `WELCOME BACK, ${selectedRole.toUpperCase()}!`
     : "WELCOME BACK!";
+
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,17 +29,20 @@ export default function LoginForm() {
     router.push(`/${selectedRole}`);
   };
 
+
   const handleConsentAccept = () => {
     setConsentGiven(true);
     setShowModal(false);
     router.push(`/${selectedRole}`);
   };
 
+
   return (
     <>
       {showModal && (
         <ConsentModal onAccept={handleConsentAccept} onClose={() => setShowModal(false)} />
       )}
+
 
       <div className="bg-[#121212] border border-[#2E2E2E] rounded-xl p-8 w-full max-w-md">
         {/* Logo */}
@@ -50,8 +56,10 @@ export default function LoginForm() {
           <p className="text-[#808080] text-xs">Select your role to continue</p>
         </div>
 
+
         {/* Role Selector */}
         <RoleSelector selected={selectedRole} onSelect={setSelectedRole} />
+
 
         <form onSubmit={handleLogin} className="space-y-4">
           {/* Email */}
@@ -68,6 +76,7 @@ export default function LoginForm() {
             />
           </div>
 
+
           {/* Password */}
           <div>
             <label className="block text-[10px] uppercase tracking-[1.5px] text-[#808080] mb-1.5">
@@ -82,6 +91,7 @@ export default function LoginForm() {
             />
           </div>
 
+
           {/* Consent note */}
           <div className="bg-[#1A1A1A] border border-[#2E2E2E] rounded-lg p-3">
             <p className="text-[11px] text-[#808080] leading-relaxed">
@@ -91,10 +101,12 @@ export default function LoginForm() {
             </p>
           </div>
 
+
           {/* Error */}
           {error && (
             <p className="text-[#FF4655] text-xs">{error}</p>
           )}
+
 
           {/* Submit */}
           <button
@@ -105,6 +117,7 @@ export default function LoginForm() {
           </button>
         </form>
 
+
         <div className="text-center mt-5">
           <a href="/" className="text-[#808080] hover:text-[#B8B8B8] text-xs transition-colors">
             ← Back to Home
@@ -114,3 +127,6 @@ export default function LoginForm() {
     </>
   );
 }
+
+
+

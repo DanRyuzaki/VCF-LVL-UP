@@ -3,6 +3,38 @@ import { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/shared/sidebar";
 import StatCard from "@/components/shared/stat-card";
 import PageHeader from "@/components/shared/page-header";
+import DashboardHeader from "@/components/shared/dashboard-header";
+import TeamManagementModule from "@/modules/team-management";
+import TournamentManagementModule from "@/modules/tournament-management";
+import BracketManagementModule from "@/modules/bracket-management";
+import AnnouncementManagementModule from "@/modules/announcement-management";
+import CalendarManagementModule from "@/modules/calendar-management";
+import { matches } from "@/data/matches";
+
+function OverviewSection() {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard value="2"  label="Active Tournaments" accent="red" />
+        <StatCard value="8"  label="Teams Registered"   accent="teal" />
+        <StatCard value="42" label="Drafted Players"     accent="purple" />
+        <StatCard value="6"  label="Matches Upcoming" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="dash-card p-5">
+          <div className="dash-section-title">Pending Submissions</div>
+          {[
+            { label: "Draft Announcement",    badge: "Pending",   badgeStyle: "bg-[#FF4655]/20 text-[#FF4655]" },
+            { label: "Match Schedule — Jun 14", badge: "Pending", badgeStyle: "bg-[#FF4655]/20 text-[#FF4655]" },
+            { label: "CODM Clash Details",    badge: "Submitted", badgeStyle: "" },
+          ].map((item) => (
+            <div key={item.label} className="dash-row-item">
+              <span className="text-sm" style={{ color: "var(--c-text)" }}>{item.label}</span>
+              <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${item.badgeStyle}`} style={!item.badgeStyle ? { backgroundColor: "var(--c-surface3)", color: "var(--c-text-dim)" } : {}}>{item.badge}</span>
+            </div>
+          ))}
+        </div>
 import { IconPlus, IconEdit, IconX, IconSearch, IconCheck } from "@/components/shared/icons";
 
 interface Team {
@@ -1614,6 +1646,20 @@ export default function OrganizerDashboard() {
   return (
     <div className="flex">
       <Sidebar role="organizer" activeSection={section} onSectionChange={setSection} />
+      <div className="flex-1 flex flex-col min-h-screen">
+        <DashboardHeader role="organizer" />
+        <main
+          className="flex-1"
+          style={{
+            overflowY: "auto",
+            padding: "32px",
+            backgroundColor: "var(--c-page-bg)",
+          }}
+        >
+          <PageHeader title={meta.title} subtitle={meta.subtitle} />
+          {renderSection()}
+        </main>
+      </div>
       <main
         className="flex-1"
         style={{

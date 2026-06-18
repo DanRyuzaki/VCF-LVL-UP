@@ -13,6 +13,8 @@ import HealthCheckModal from "@/modules/maintenance/health-check-modal";
 import ExportLogsModal from "@/modules/maintenance/export-logs-modal";
 import MaintenanceModeModal from "@/modules/maintenance/maintenance-mode-modal";
 import RestartServicesModal from "@/modules/maintenance/restart-services-modal";
+import ArchivedSectionModule from "@/modules/archived-section";
+import CommunicationModule from "@/modules/communication";
 
 const systemLogs = [
   { time: "2025-06-12 14:02:11", type: "INFO", msg: "User login: marco@faith.com [Organizer]" },
@@ -293,37 +295,7 @@ function MaintenanceSection() {
   );
 }
 
-function CrmSection() {
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <button className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors">+ Add Record</button>
-      </div>
-      <div className="dash-table-wrap">
-        <table className="w-full border-collapse">
-          <thead className="dash-thead">
-            <tr>{["Name", "Type", "Contact", "Notes", "Actions"].map((h) => <th key={h} className="dash-th">{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {[
-              { name: "Word Baptist Church HQ", type: "Ministry", contact: "admin@wbc.org", note: "Main organization", tc: "bg-[#8B5CF6]/20 text-[#8B5CF6]" },
-              { name: "Youth Ministry Group A", type: "Group", contact: "youth@wbc.org", note: "MLBB division", tc: "bg-[#00F5D4]/15 text-[#00F5D4]" },
-              { name: "Youth Ministry Group B", type: "Group", contact: "youth2@wbc.org", note: "CODM division", tc: "bg-[#00F5D4]/15 text-[#00F5D4]" },
-            ].map((r) => (
-              <tr key={r.name} className="dash-tr">
-                <td className="dash-td font-medium">{r.name}</td>
-                <td className="dash-td"><span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${r.tc}`}>{r.type}</span></td>
-                <td className="dash-td-muted">{r.contact}</td>
-                <td className="dash-td-dim">{r.note}</td>
-                <td className="dash-td"><button className="dash-btn-ghost text-xs px-3 py-1 rounded">Edit</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+
 
 const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   logs: { title: "SYSTEM LOGS", subtitle: "Client-side activity and event logs" },
@@ -331,7 +303,8 @@ const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   metadata: { title: "USER MANAGEMENT", subtitle: "Account records and role data" },
   roles: { title: "ROLE MANAGEMENT", subtitle: "Manage admins and suspend / restore accounts" },
   maintenance: { title: "MAINTENANCE", subtitle: "System utilities and maintenance tools" },
-  crm: { title: "CRM RECORDS", subtitle: "Manage church and ministry records" },
+  archived: { title: "ARCHIVED SECTION", subtitle: "Centralized audit and monitoring section for admin activities" },
+  communication: { title: "COMMUNICATION MODULE", subtitle: "Internal messaging system for Admins and Developers" },
 };
 
 export default function DeveloperDashboard() {
@@ -345,7 +318,8 @@ export default function DeveloperDashboard() {
       case "metadata": return <UserManagementModule context="developer" />;
       case "roles": return <RoleManagementSection />;
       case "maintenance": return <MaintenanceSection />;
-      case "crm": return <CrmSection />;
+      case "archived": return <ArchivedSectionModule />;
+      case "communication": return <CommunicationModule context="developer" />;
       default: return null;
     }
   };

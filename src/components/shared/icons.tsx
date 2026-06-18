@@ -194,12 +194,23 @@ export function IconMenu({ className = "", size = 16, style }: IconProps) {
   );
 }
 
+export function IconChat({ className = "", size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <circle cx="9" cy="9" r="1.2" fill="currentColor" />
+      <circle cx="15" cy="9" r="1.2" fill="currentColor" />
+      <path d="M10 13a3.5 3.5 0 0 0 4 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
 const ICON_MAP: Record<string, (p: IconProps) => JSX.Element> = {
   user: IconUser, team: IconUsers, calendar: IconCalendar, trophy: IconTrophy,
   bracket: IconBracket, bell: IconBell, video: IconVideo, chart: IconChart,
   check: IconCheck, target: IconTarget, report: IconReport, terminal: IconTerminal,
   warning: IconWarning, database: IconDatabase, lock: IconLock, wrench: IconWrench,
-  folder: IconFolder, users: IconUsers,
+  folder: IconFolder, users: IconUsers, chat: IconChat,
 };
 
 export function DynamicIcon({ name, ...props }: IconProps & { name: string }) {

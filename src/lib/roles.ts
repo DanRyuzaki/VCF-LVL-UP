@@ -51,6 +51,7 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
       { label: "Tournament Monitor", section: "tournaments", icon: "trophy" },
       { label: "Livestream",      section: "livestream", icon: "video" },
       { label: "Reports",         section: "reports",    icon: "report" },
+      { label: "Communication",   section: "communication", icon: "chat" },
     ],
   },
   developer: {
@@ -63,7 +64,7 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
       { label: "User Management", section: "metadata",    icon: "database" },
       { label: "Role Management",section: "roles",       icon: "lock" },
       { label: "Maintenance",    section: "maintenance", icon: "wrench" },
-      { label: "CRM Records",    section: "crm",         icon: "folder" },
+      { label: "Communication",   section: "communication", icon: "chat" },
     ],
   },
 };

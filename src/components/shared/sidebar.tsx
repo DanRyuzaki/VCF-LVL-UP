@@ -100,7 +100,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                 <div
                   style={{
                     fontFamily: "'Rajdhani', 'Teko', 'Montserrat', sans-serif",
-                    fontSize: "15px",
+                    fontSize: "0.9375rem",
                     fontWeight: 800,
                     letterSpacing: "0.04em",
                     lineHeight: 1.1,
@@ -120,7 +120,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                 <div
                   style={{
                     fontFamily: "'Inter', 'Rajdhani', sans-serif",
-                    fontSize: "9.5px",
+                    fontSize: "0.59375rem",
                     fontWeight: 600,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
@@ -140,7 +140,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
           {/* ── NAVIGATION SECTION LABEL ── */}
           <div
             style={{
-              fontSize: "9px",
+              fontSize: "0.5625rem",
               fontFamily: "'Inter', sans-serif",
               textTransform: "uppercase",
               letterSpacing: "0.2em",
@@ -166,7 +166,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                     alignItems: "center",
                     gap: "12px",
                     padding: "9px 20px",
-                    fontSize: "13px",
+                    fontSize: "0.8125rem",
                     fontFamily: "'Inter', 'Rajdhani', sans-serif",
                     fontWeight: isActive ? 700 : 500,
                     textAlign: "left",
@@ -257,7 +257,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                 alignItems: "center",
                 justifyContent: "center",
                 fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "13px",
+                fontSize: "0.8125rem",
                 fontWeight: 700,
                 flexShrink: 0,
                 backgroundColor: "rgba(255,70,85,0.12)",
@@ -271,7 +271,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
             <div style={{ minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: "12px",
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.1em",
@@ -285,7 +285,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
               </div>
               <div
                 style={{
-                  fontSize: "10px",
+                  fontSize: "0.625rem",
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
                   color: "var(--c-text-dim)",
@@ -300,6 +300,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
             </div>
           </div>
 
+
           {/* Sign Out — full width matching sidebar padding */}
           <Link
             href="/login"
@@ -310,7 +311,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
               gap: "8px",
               width: "100%",
               padding: "8px 12px",
-              fontSize: "11px",
+              fontSize: "0.6875rem",
               textTransform: "uppercase",
               letterSpacing: "0.12em",
               fontWeight: 500,

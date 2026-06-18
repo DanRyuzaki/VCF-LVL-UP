@@ -134,7 +134,7 @@ export default function DataPrivacyModal() {
     border: `1px solid ${active ? "var(--c-accent)" : "var(--c-border)"}`,
     backgroundColor: active ? "rgba(255,70,85,0.12)" : "var(--c-surface2)",
     color: active ? "var(--c-accent)" : "var(--c-text-dim)",
-    fontSize: "10px",
+    fontSize: "0.625rem",
     fontWeight: 700,
     letterSpacing: "1.5px",
     textTransform: "uppercase" as const,
@@ -304,7 +304,7 @@ export default function DataPrivacyModal() {
         <div style={{ marginBottom: "20px", paddingRight: "100px" }}>
           <div
             style={{
-              fontSize: "10px",
+              fontSize: "0.625rem",
               textTransform: "uppercase",
               letterSpacing: "2px",
               color: "var(--c-accent)",
@@ -317,7 +317,7 @@ export default function DataPrivacyModal() {
           <h2
             style={{
               fontFamily: "'Rajdhani', sans-serif",
-              fontSize: "22px",
+              fontSize: "1.375rem",
               fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: "1.5px",
@@ -327,7 +327,7 @@ export default function DataPrivacyModal() {
           >
             {c.title}
           </h2>
-          <p style={{ fontSize: "12px", color: "var(--c-text-dim)" }}>{c.subtitle}</p>
+          <p style={{ fontSize: "0.75rem", color: "var(--c-text-dim)" }}>{c.subtitle}</p>
         </div>
 
         {/* ── Consent text box ── */}
@@ -342,7 +342,7 @@ export default function DataPrivacyModal() {
             overflowY: "auto",
           }}
         >
-          <p style={{ fontSize: "12px", lineHeight: "1.8", color: "var(--c-text-muted)" }}>
+          <p style={{ fontSize: "0.75rem", lineHeight: "1.8", color: "var(--c-text-muted)" }}>
             {c.body}
           </p>
         </div>
@@ -371,7 +371,7 @@ export default function DataPrivacyModal() {
               flexShrink: 0,
             }}
           />
-          <span style={{ fontSize: "12px", lineHeight: "1.6", color: "var(--c-text-muted)" }}>
+          <span style={{ fontSize: "0.75rem", lineHeight: "1.6", color: "var(--c-text-muted)" }}>
             {c.checkbox}
           </span>
         </label>
@@ -385,7 +385,7 @@ export default function DataPrivacyModal() {
               flex: 1,
               border: "1px solid var(--c-border)",
               color: "var(--c-text-dim)",
-              fontSize: "11px",
+              fontSize: "0.6875rem",
               textTransform: "uppercase",
               letterSpacing: "2px",
               padding: "12px",
@@ -414,7 +414,7 @@ export default function DataPrivacyModal() {
               flex: 2,
               backgroundColor: agreed ? "var(--c-accent)" : "rgba(255,70,85,0.2)",
               color: agreed ? "#ffffff" : "rgba(255,255,255,0.35)",
-              fontSize: "11px",
+              fontSize: "0.6875rem",
               fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: "2px",

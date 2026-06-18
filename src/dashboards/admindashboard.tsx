@@ -6,6 +6,7 @@ import PageHeader from "@/components/shared/page-header";
 import UserManagementModule from "@/modules/user-management";
 import CalendarManagementModule from "@/modules/calendar-management";
 import LivestreamManagementModule from "@/modules/livestream-management";
+import DeletedReportsModule from "@/modules/deleted-reports";
 import { tournaments } from "@/data/tournaments";
 
 function OverviewSection() {
@@ -177,6 +178,7 @@ const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   livestream: { title: "LIVESTREAM MANAGEMENT", subtitle: "Manage embedded stream links" },
   calendar: { title: "CALENDAR MANAGEMENT", subtitle: "Manage and approve calendar events" },
   reports: { title: "REPORTS", subtitle: "Tournament and registration reports" },
+  "deleted-reports": { title: "DELETED REPORTS", subtitle: "Administrative user deletion history and audit trail" },
 };
 
 export default function AdminDashboard() {
@@ -187,11 +189,12 @@ export default function AdminDashboard() {
     switch (section) {
       case "overview": return <OverviewSection />;
       case "approvals": return <ApprovalsSection />;
-      case "users": return <UserManagementModule context="admin" />;
+      case "users": return <UserManagementModule context="admin" onNavigate={setSection} />;
       case "tournaments": return <TournamentMonitorSection />;
       case "livestream": return <LivestreamManagementModule showManageControls />;
       case "calendar": return <CalendarManagementModule showSubmitForm showApproveActions />;
       case "reports": return <ReportsSection />;
+      case "deleted-reports": return <DeletedReportsModule />;
       default: return null;
     }
   };

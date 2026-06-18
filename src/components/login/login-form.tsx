@@ -8,11 +8,10 @@ import { useTheme } from "@/lib/theme-context";
 
 const CONSENT_KEY = "vcf_consent_session";
 
-/* ── Validation Helpers ─────────────────────────────────── */
 
 function validateEmail(email: string): string {
   if (!email) return "Email address is required.";
-  // RFC 5322-ish email regex
+
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   if (!re.test(email)) return "Please enter a valid email address (e.g. you@domain.com).";
   return "";
@@ -24,26 +23,28 @@ function validatePassword(password: string): string[] {
   return errors;
 }
 
-/* ── Component ──────────────────────────────────────────── */
+
 
 export default function LoginForm() {
   const router = useRouter();
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const [selectedRole, setSelectedRole]   = useState<UserRole | null>(null);
-  const [email, setEmail]                 = useState("");
-  const [password, setPassword]           = useState("");
-  const [showPassword, setShowPassword]   = useState(false);
-  const [consentGiven, setConsentGiven]   = useState(false);
-  const [showModal, setShowModal]         = useState(false);
-  const [error, setError]                 = useState("");
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [error, setError] = useState("");
 
-  // Inline validation errors (shown on blur or submit)
-  const [emailError, setEmailError]       = useState("");
+
+  const [emailError, setEmailError] = useState("");
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
-  const [touched, setTouched]             = useState({ email: false, password: false });
+  const [touched, setTouched] = useState({ email: false, password: false });
 
-  // Pre-fill consent if already accepted this session (from landing page modal)
+
+
+
   useEffect(() => {
     if (sessionStorage.getItem(CONSENT_KEY) === "true") {
       setConsentGiven(true);
@@ -54,9 +55,11 @@ export default function LoginForm() {
     ? `WELCOME BACK, ${selectedRole.toUpperCase()}!`
     : "WELCOME BACK!";
 
-  const pwErrors   = validatePassword(password);
+  const pwErrors = validatePassword(password);
 
-  /* ─ Handlers ─ */
+
+
+
   const handleEmailBlur = () => {
     setTouched((t) => ({ ...t, email: true }));
     setEmailError(validateEmail(email));
@@ -94,7 +97,7 @@ export default function LoginForm() {
     router.push(`/${selectedRole}`);
   };
 
-  /* ─ Styles ─ */
+
   const inputStyle = (hasError: boolean) => ({
     width: "100%",
     backgroundColor: "var(--c-surface2)",
@@ -174,7 +177,7 @@ export default function LoginForm() {
             {emailError && (
               <p id="email-error" className="text-xs mt-1.5 flex items-center gap-1" style={{ color: "#EF4444" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
                 </svg>
                 {emailError}
               </p>
@@ -210,8 +213,8 @@ export default function LoginForm() {
                 aria-describedby={passwordErrors.length > 0 ? "password-errors" : undefined}
                 style={{ ...inputStyle(passwordErrors.length > 0 && touched.password), paddingRight: "42px" }}
                 onFocus={(e) =>
-                  ((e.target as HTMLInputElement).style.borderColor =
-                    passwordErrors.length > 0 && touched.password ? "#EF4444" : "var(--c-accent)")
+                ((e.target as HTMLInputElement).style.borderColor =
+                  passwordErrors.length > 0 && touched.password ? "#EF4444" : "var(--c-accent)")
                 }
               />
               {/* Show/hide password */}
@@ -224,14 +227,14 @@ export default function LoginForm() {
               >
                 {showPassword ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
                   </svg>
                 ) : (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
                   </svg>
                 )}
               </button>
@@ -241,7 +244,7 @@ export default function LoginForm() {
             {touched.password && passwordErrors.length > 0 && (
               <p id="password-errors" className="text-xs mt-1.5 flex items-center gap-1" style={{ color: "#EF4444" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
                 </svg>
                 {password.length === 0 ? "Password is required." : "Password is incorrect."}
               </p>
@@ -254,7 +257,7 @@ export default function LoginForm() {
           {error && (
             <p className="text-xs flex items-center gap-1" style={{ color: "#EF4444" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
               </svg>
               {error}
             </p>
@@ -274,6 +277,29 @@ export default function LoginForm() {
           >
             Login
           </button>
+
+          {/* Reset Password */}
+          <a
+            href="/login/reset-password"
+            className="block w-full text-center font-semibold uppercase tracking-widest text-xs py-2.5 rounded-lg transition-all"
+            style={{
+              color: "var(--c-text-dim)",
+              border: "1px solid var(--c-border)",
+              textDecoration: "none",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.color = "var(--c-accent)";
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--c-accent)";
+              (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,70,85,0.06)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.color = "var(--c-text-dim)";
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--c-border)";
+              (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+            }}
+          >
+            Reset Password
+          </a>
         </form>
 
         <div className="text-center mt-5">

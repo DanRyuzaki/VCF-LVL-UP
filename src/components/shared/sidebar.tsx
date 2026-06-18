@@ -10,8 +10,28 @@ interface SidebarProps {
   onSectionChange: (section: string) => void;
 }
 
+import { useState, useEffect } from "react";
+
 export default function Sidebar({ role, activeSection, onSectionChange }: SidebarProps) {
   const config = ROLE_CONFIG[role];
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const updateCount = () => {
+      const savedCount = localStorage.getItem("vcf_unread_communication_count");
+      setUnreadCount(savedCount ? Number(savedCount) : 0);
+    };
+
+    updateCount();
+
+    window.addEventListener("storage", updateCount);
+    window.addEventListener("vcf-unread-chat-update", updateCount);
+
+    return () => {
+      window.removeEventListener("storage", updateCount);
+      window.removeEventListener("vcf-unread-chat-update", updateCount);
+    };
+  }, []);
 
   const initials = config.label
     .split(" ")
@@ -191,7 +211,23 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
                   }}
                 >
                   <DynamicIcon name={item.icon} size={15} />
-                  <span>{item.label}</span>
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  {item.section === "communication" && unreadCount > 0 && (
+                    <span
+                      style={{
+                        backgroundColor: "#FF4655",
+                        color: "#FFFFFF",
+                        fontSize: "10px",
+                        fontWeight: "bold",
+                        borderRadius: "10px",
+                        padding: "2px 6px",
+                        lineHeight: "1",
+                        display: "inline-block",
+                      }}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -233,6 +269,46 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
               >
                 <DynamicIcon name="report" size={15} />
                 <span>Deleted Reports</span>
+              </button>
+            </div>
+          )}
+
+          {role === "developer" && (
+            <div style={{ marginTop: "auto", paddingTop: "8px", paddingBottom: "4px" }}>
+              <button
+                onClick={() => onSectionChange("archived")}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "9px 20px",
+                  fontSize: "13px",
+                  fontFamily: "'Inter', 'Rajdhani', sans-serif",
+                  fontWeight: activeSection === "archived" ? 700 : 500,
+                  textAlign: "left",
+                  borderLeft: `2px solid ${activeSection === "archived" ? "var(--c-accent)" : "transparent"}`,
+                  color: activeSection === "archived" ? "var(--c-accent)" : "var(--c-text-muted)",
+                  backgroundColor: activeSection === "archived" ? "rgba(255,70,85,0.06)" : "transparent",
+                  transition: "all 0.15s ease",
+                  cursor: "pointer",
+                  letterSpacing: "0.03em",
+                }}
+                onMouseEnter={(e) => {
+                  if (activeSection !== "archived") {
+                    (e.currentTarget as HTMLElement).style.color = "var(--c-text)";
+                    (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(128,128,128,0.05)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeSection !== "archived") {
+                    (e.currentTarget as HTMLElement).style.color = "var(--c-text-muted)";
+                    (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+                  }
+                }}
+              >
+                <DynamicIcon name="report" size={15} />
+                <span>Archived Section</span>
               </button>
             </div>
           )}

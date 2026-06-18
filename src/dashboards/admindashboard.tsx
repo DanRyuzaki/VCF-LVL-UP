@@ -8,6 +8,7 @@ import UserManagementModule from "@/modules/user-management";
 import CalendarManagementModule from "@/modules/calendar-management";
 import LivestreamManagementModule from "@/modules/livestream-management";
 import DeletedReportsModule from "@/modules/deleted-reports";
+import CommunicationModule from "@/modules/communication";
 import { tournaments } from "@/data/tournaments";
 
 function OverviewSection() {
@@ -180,6 +181,7 @@ const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   calendar: { title: "CALENDAR MANAGEMENT", subtitle: "Manage and approve calendar events" },
   reports: { title: "REPORTS", subtitle: "Tournament and registration reports" },
   "deleted-reports": { title: "DELETED REPORTS", subtitle: "Administrative user deletion history and audit trail" },
+  communication: { title: "COMMUNICATION MODULE", subtitle: "Internal messaging system for Admins and Developers" },
 };
 
 export default function AdminDashboard() {
@@ -196,6 +198,7 @@ export default function AdminDashboard() {
       case "calendar": return <CalendarManagementModule showSubmitForm showApproveActions />;
       case "reports": return <ReportsSection />;
       case "deleted-reports": return <DeletedReportsModule />;
+      case "communication": return <CommunicationModule context="admin" />;
       default: return null;
     }
   };

@@ -1,20 +1,25 @@
 "use client";
 import { useState } from "react";
 import { livestreams as initial } from "@/data/livestreams";
+import { Livestream } from "@/types/announcement";
 import { IconPlay, IconPlus, IconEdit, IconX } from "@/components/shared/icons";
+import AddStreamModal from "@/modules/livestream-management/add-stream-modal";
 
 interface Props { showManageControls?: boolean; }
 
 export default function LivestreamManagementModule({ showManageControls = false }: Props) {
-  const [url, setUrl]     = useState("");
-  const [label, setLabel] = useState("");
-  const [added, setAdded] = useState(false);
+  const [streams, setStreams] = useState<Livestream[]>(initial);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [successMsg, setSuccessMsg] = useState(false);
 
-  const handleAdd = () => {
-    if (!label || !url) return;
-    setAdded(true);
-    setLabel(""); setUrl("");
-    setTimeout(() => setAdded(false), 3000);
+  const handleAddStream = (stream: Livestream) => {
+    setStreams((prev) => [...prev, stream]);
+    setSuccessMsg(true);
+    setTimeout(() => setSuccessMsg(false), 3000);
+  };
+
+  const handleRemove = (id: string) => {
+    setStreams((prev) => prev.filter((s) => s.id !== id));
   };
 
   const statusStyle = (s: string) => {
@@ -26,29 +31,25 @@ export default function LivestreamManagementModule({ showManageControls = false 
   return (
     <div className="space-y-6">
       {showManageControls && (
-        <div className="dash-card p-5">
-          <div className="dash-section-title">Add Livestream</div>
-          {added && (
-            <div className="bg-[#00F5D4]/10 border border-[#00F5D4]/30 text-[#00F5D4] text-xs rounded-lg px-4 py-2 mb-4">Livestream added successfully.</div>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="dash-label">Label</label>
-              <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. MLBB QF Day 1" className="dash-input" />
-            </div>
-            <div className="md:col-span-2">
-              <label className="dash-label">Stream URL</label>
-              <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..." className="dash-input" />
-            </div>
+        <div className="flex items-center justify-between">
+          <div>
+            {successMsg && (
+              <div className="bg-[#00F5D4]/10 border border-[#00F5D4]/30 text-[#00F5D4] text-xs rounded-lg px-4 py-2 inline-block">
+                Livestream added successfully.
+              </div>
+            )}
           </div>
-          <button onClick={handleAdd} className="mt-4 flex items-center gap-2 bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
+          >
             <IconPlus size={13} /> Add Stream
           </button>
         </div>
       )}
 
       {/* Active stream embed */}
-      {initial.filter((l) => l.status === "live").map((ls) => (
+      {streams.filter((l) => l.status === "live").map((ls) => (
         <div key={ls.id} className="max-w-2xl">
           <div
             className="relative rounded-lg overflow-hidden aspect-video flex items-center justify-center cursor-pointer group transition-colors"
@@ -81,17 +82,18 @@ export default function LivestreamManagementModule({ showManageControls = false 
         <table className="w-full border-collapse">
           <thead className="dash-thead">
             <tr>
-              {["Label", "URL", "Tournament", "Status", ...(showManageControls ? ["Actions"] : [])].map((h) => (
+              {["Label", "URL", "Tournament", "Platform", "Status", ...(showManageControls ? ["Actions"] : [])].map((h) => (
                 <th key={h} className="dash-th">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {initial.map((ls) => (
+            {streams.map((ls) => (
               <tr key={ls.id} className="dash-tr">
                 <td className="dash-td font-medium">{ls.label}</td>
                 <td className="dash-td-dim max-w-[180px] truncate">{ls.url}</td>
                 <td className="dash-td-muted">{ls.tournamentName}</td>
+                <td className="dash-td-muted">{ls.platform || "YouTube"}</td>
                 <td className="dash-td">
                   <span
                     className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${statusStyle(ls.status)}`}
@@ -104,7 +106,12 @@ export default function LivestreamManagementModule({ showManageControls = false 
                   <td className="dash-td">
                     <div className="flex gap-2">
                       <button className="flex items-center gap-1 dash-btn-ghost text-xs px-3 py-1 rounded"><IconEdit size={11} /> Edit</button>
-                      <button className="flex items-center gap-1 dash-btn-ghost text-xs px-3 py-1 rounded"><IconX size={11} /> Remove</button>
+                      <button
+                        onClick={() => handleRemove(ls.id)}
+                        className="flex items-center gap-1 dash-btn-ghost text-xs px-3 py-1 rounded"
+                      >
+                        <IconX size={11} /> Remove
+                      </button>
                     </div>
                   </td>
                 )}
@@ -113,6 +120,14 @@ export default function LivestreamManagementModule({ showManageControls = false 
           </tbody>
         </table>
       </div>
+
+      {/* Add Stream Modal */}
+      {showAddModal && (
+        <AddStreamModal
+          onClose={() => setShowAddModal(false)}
+          onSave={handleAddStream}
+        />
+      )}
     </div>
   );
 }

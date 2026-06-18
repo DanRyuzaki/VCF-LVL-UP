@@ -7,8 +7,13 @@ import DashboardHeader from "@/components/shared/dashboard-header";
 import TeamManagementModule from "@/modules/team-management";
 import TournamentManagementModule from "@/modules/tournament-management";
 import BracketManagementModule from "@/modules/bracket-management";
-import AnnouncementManagementModule from "@/modules/announcement-management";
 import CalendarManagementModule from "@/modules/calendar-management";
+import OverviewManagementModule from "@/modules/overview-management";
+import AnnouncementManagementModule from "@/modules/announcement-management";
+import ChatManagementModule from "@/modules/chat-management";
+import DraftManagementModule from "@/modules/draft-management";
+import FreeAgentManagementModule from "@/modules/free-agent-management";
+import ResultsManagementModule from "@/modules/results-management";
 import { matches } from "@/data/matches";
 import { IconPlus, IconEdit, IconX, IconSearch, IconCheck } from "@/components/shared/icons";
 
@@ -158,9 +163,6 @@ export default function OrganizerDashboard() {
     { name: "Bea Santos", team: "Team Apex", unread: 0, history: [{ sender: "Bea Santos", text: "Ready for our QF match next week.", time: "Yesterday" }] },
   ]);
 
-  const [activeChatIndex, setActiveChatIndex] = useState(0);
-  const [chatText, setChatText] = useState("");
-
   const [resultsNotification, setResultsNotification] = useState<{ message: string; sub: string } | null>(null);
 
   const [selectedMatchId, setSelectedMatchId] = useState("qf3");
@@ -168,87 +170,6 @@ export default function OrganizerDashboard() {
   const [scoreA, setScoreA] = useState(2);
   const [scoreB, setScoreB] = useState(0);
 
-  const handleResultSubmit = () => {
-    const selectedMatch = matchesState.find((m) => m.id === selectedMatchId);
-    if (!selectedMatch) return;
-
-    const updated = matchesState.map((m) => {
-      if (m.id === selectedMatchId) {
-        return {
-          ...m,
-          winner: matchWinner,
-          scoreA: scoreA,
-          scoreB: scoreB,
-          status: "completed",
-        };
-      }
-      return m;
-    });
-
-    let feederRoundWinner = matchWinner;
-    let nextMatchId = "";
-    let slotKey: "teamA" | "teamB" = "teamA";
-
-    if (selectedMatchId === "qf3") {
-      nextMatchId = "sf2";
-      slotKey = "teamA";
-    } else if (selectedMatchId === "qf4") {
-      nextMatchId = "sf2";
-      slotKey = "teamB";
-    } else if (selectedMatchId === "sf1") {
-      nextMatchId = "f1";
-      slotKey = "teamA";
-    } else if (selectedMatchId === "sf2") {
-      nextMatchId = "f1";
-      slotKey = "teamB";
-    }
-
-    const finalMatches = updated.map((m) => {
-      if (m.id === nextMatchId) {
-        return {
-          ...m,
-          [slotKey]: feederRoundWinner,
-        };
-      }
-      return m;
-    });
-
-    setMatchesState(finalMatches);
-
-    let alertMessage = "";
-    let nextOpponent = "";
-
-    if (selectedMatchId === "qf3" || selectedMatchId === "qf4") {
-      const companionMatchId = selectedMatchId === "qf3" ? "qf4" : "qf3";
-      const companionMatch = finalMatches.find((m) => m.id === companionMatchId);
-      if (companionMatch && companionMatch.status === "completed") {
-        nextOpponent = companionMatch.winner;
-        alertMessage = `Alert sent to ${feederRoundWinner} and ${nextOpponent} members: 'Your Semifinals match is scheduled. Prepare for battle!'`;
-      } else {
-        alertMessage = `Alert sent to ${feederRoundWinner}: 'Waiting for the winner of Quarterfinals Match to lock opponent.'`;
-      }
-    } else if (selectedMatchId === "sf1" || selectedMatchId === "sf2") {
-      const companionMatchId = selectedMatchId === "sf1" ? "sf2" : "sf1";
-      const companionMatch = finalMatches.find((m) => m.id === companionMatchId);
-      if (companionMatch && companionMatch.status === "completed") {
-        nextOpponent = companionMatch.winner;
-        alertMessage = `Alert sent to ${feederRoundWinner} and ${nextOpponent} members: 'Your Finals match is scheduled!'`;
-      } else {
-        alertMessage = `Alert sent to ${feederRoundWinner}: 'Waiting for the winner of Semifinals Match to lock final opponent.'`;
-      }
-    } else {
-      alertMessage = `Alert sent: '${feederRoundWinner} is crowned champion of MLBB Season 4!'`;
-    }
-
-    setResultsNotification({
-      message: alertMessage,
-      sub: `Player stats synced: ${feederRoundWinner} players +25 Skill Rating. Win-Loss record and rankings updated on leaderboards.`,
-    });
-
-    setTimeout(() => {
-      setResultsNotification(null);
-    }, 8000);
-  };
 
   const [calTitle, setCalTitle] = useState("");
   const [calDate, setCalDate] = useState("");
@@ -356,23 +277,6 @@ export default function OrganizerDashboard() {
   const [newTeamGame, setNewTeamGame] = useState("MLBB");
   const [newTeamHead, setNewTeamHead] = useState("");
 
-  const handleCreateTeam = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTeamName || !newTeamHead) return;
-
-    const newT: Team = {
-      id: `t-${Date.now()}`,
-      name: newTeamName,
-      game: newTeamGame,
-      head: newTeamHead,
-      players: [newTeamHead],
-      status: "incomplete",
-    };
-    setTeams((prev) => [...prev, newT]);
-    setNewTeamName("");
-    setNewTeamHead("");
-  };
-
   const [teamModalType, setTeamModalType] = useState<"none" | "view" | "edit">("none");
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
 
@@ -381,50 +285,10 @@ export default function OrganizerDashboard() {
   const [editTeamStatus, setEditTeamStatus] = useState("");
   const [editTeamPlayers, setEditTeamPlayers] = useState("");
 
-  const openTeamModal = (t: Team, type: "view" | "edit") => {
-    setSelectedTeam(t);
-    setTeamModalType(type);
-    if (type === "edit") {
-      setEditTeamName(t.name);
-      setEditTeamHead(t.head);
-      setEditTeamStatus(t.status);
-      setEditTeamPlayers(t.players.join(", "));
-    }
-  };
-
-  const handleSaveTeamDetails = () => {
-    if (!selectedTeam) return;
-    setTeams((prev) =>
-      prev.map((t) => {
-        if (t.id === selectedTeam.id) {
-          return {
-            ...t,
-            name: editTeamName,
-            head: editTeamHead,
-            status: editTeamStatus,
-            players: editTeamPlayers.split(",").map((s) => s.trim()).filter(Boolean),
-          };
-        }
-        return t;
-      })
-    );
-    setTeamModalType("none");
-    setSelectedTeam(null);
-  };
-
-  const [draftSearch, setDraftSearch] = useState("");
-  const [draftGame, setDraftGame] = useState("All");
-  const [draftRole, setDraftRole] = useState("All");
-  const [draftRank, setDraftRank] = useState("All");
-  const [hoveredPlayer, setHoveredPlayer] = useState<Player | null>(null);
-
-  const roleOptions = draftGame === "CODM"
-    ? ["All Roles", "Slayers", "Anchors", "Supports", "Objective"]
-    : ["All Roles", "XP Lane", "Gold Lane", "Mid Lane", "Roamer", "Jungler"];
-
-  const rankOptions = draftGame === "CODM"
-    ? ["All Ranks", "Rookie", "Veteran", "Elite", "Pro", "Master", "Grandmaster", "Legendary"]
-    : ["All Ranks", "Mythic", "Mythical Glory", "Legend"];
+  // Announcement form state
+  const [newAnnTitle, setNewAnnTitle] = useState("");
+  const [newAnnContent, setNewAnnContent] = useState("");
+  const [annSuccess, setAnnSuccess] = useState(false);
 
   const [freeAgentSearch, setFreeAgentSearch] = useState("");
   const [newFaName, setNewFaName] = useState("");
@@ -453,722 +317,88 @@ export default function OrganizerDashboard() {
     setNewFaIgn("");
   };
 
-  const handleDraftAction = (player: Player, targetTeamName: string) => {
-    setFreeAgents((prev) => prev.filter((p) => p.ign !== player.ign));
-    setDraftedPlayers((prev) => [...prev, { ...player, team: targetTeamName }]);
-    setTeams((prev) =>
-      prev.map((t) => {
-        if (t.name === targetTeamName) {
-          return {
-            ...t,
-            players: [...t.players, player.name],
-          };
-        }
-        return t;
-      })
-    );
-  };
-
-  const handleRemoveDrafted = (player: Player) => {
-    setDraftedPlayers((prev) => prev.filter((p) => p.ign !== player.ign));
-    setFreeAgents((prev) => [...prev, { ...player, team: undefined }]);
-    setTeams((prev) =>
-      prev.map((t) => {
-        if (t.name === player.team) {
-          return {
-            ...t,
-            players: t.players.filter((name) => name !== player.name),
-          };
-        }
-        return t;
-      })
-    );
-    if (hoveredPlayer?.ign === player.ign) {
-      setHoveredPlayer(null);
-    }
-  };
-
-  const [newAnnTitle, setNewAnnTitle] = useState("");
-  const [newAnnContent, setNewAnnContent] = useState("");
-  const [annSuccess, setAnnSuccess] = useState(false);
-
-  const handleAnnSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAnnTitle || !newAnnContent) return;
-
-    const newA = {
-      id: `a-${Date.now()}`,
-      title: newAnnTitle,
-      content: newAnnContent,
-      submittedAt: new Date().toISOString().slice(0, 10),
-      status: "pending",
-    };
-    setAnnouncements((prev) => [...prev, newA]);
-    setNewAnnTitle("");
-    setNewAnnContent("");
-    setAnnSuccess(true);
-    setTimeout(() => setAnnSuccess(false), 3000);
-  };
-
-  const handleSendChatMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatText.trim()) return;
-
-    const newMsg = {
-      sender: "Organizer",
-      text: chatText,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-
-    setChatLeaders((prev) =>
-      prev.map((leader, i) => {
-        if (i === activeChatIndex) {
-          return {
-            ...leader,
-            unread: 0,
-            history: [...leader.history, newMsg],
-          };
-        }
-        return leader;
-      })
-    );
-    setChatText("");
-
-    setTimeout(() => {
-      const autoReply = {
-        sender: chatLeaders[activeChatIndex].name,
-        text: "Got it! Thanks for reaching out, I will coordinate this with the team.",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      setChatLeaders((prev) =>
-        prev.map((leader, i) => {
-          if (i === activeChatIndex) {
-            return {
-              ...leader,
-              history: [...leader.history, autoReply],
-            };
-          }
-          return leader;
-        })
-      );
-    }, 1500);
-  };
-
   const renderSection = () => {
     switch (section) {
       case "overview":
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard value={tournaments.length} label="Active Tournaments" accent="red" />
-              <StatCard value={teams.length} label="Teams Registered" accent="teal" />
-              <StatCard value={draftedPlayers.length} label="Drafted Players" accent="purple" />
-              <StatCard value={matchesState.filter((m) => m.status === "pending").length} label="Matches Upcoming" />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="dash-card p-5">
-                <div className="dash-section-title">Announcement Pending Actions</div>
-                {announcements.map((item) => (
-                  <div key={item.id} className="dash-row-item">
-                    <span className="text-sm font-semibold" style={{ color: "var(--c-text)" }}>{item.title}</span>
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                        item.status === "pending" ? "bg-[#FF4655]/20 text-[#FF4655]" : "bg-[#00F5D4]/15 text-[#00F5D4]"
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="dash-card p-5">
-                <div className="dash-section-title">Match Result Activities</div>
-                <div className="space-y-3">
-                  {matchesState.filter((m) => m.status === "completed").slice(-3).map((m) => (
-                    <div key={m.id} className="flex items-start gap-3 py-2 border-b border-[var(--c-border)]">
-                      <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-[#FF4655]" />
-                      <div>
-                        <div className="text-xs font-bold text-[var(--c-text)]">{m.teamA} vs {m.teamB} completed</div>
-                        <div className="text-[10px] text-[var(--c-text-muted)]">Winner: {m.winner} ({m.scoreA}-{m.scoreB})</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
+        return <OverviewManagementModule
+          tournaments={tournaments}
+          teams={teams}
+          draftedPlayers={draftedPlayers}
+          matchesState={matchesState}
+          announcements={announcements}
+        />;
 
       case "chat":
-        const currentChat = chatLeaders[activeChatIndex];
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="dash-card p-4 space-y-2">
-              <div className="dash-section-title px-1">Team Leaders</div>
-              <div className="space-y-1">
-                {chatLeaders.map((l, index) => (
-                  <button
-                    key={l.name}
-                    onClick={() => {
-                      setActiveChatIndex(index);
-                      setChatLeaders((prev) =>
-                        prev.map((leader, i) => (i === index ? { ...leader, unread: 0 } : leader))
-                      );
-                    }}
-                    className="w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors"
-                    style={{
-                      backgroundColor: activeChatIndex === index ? "rgba(139, 92, 246, 0.1)" : "var(--c-surface2)",
-                      border: activeChatIndex === index ? "1px solid #8B5CF6" : "1px solid var(--c-border)",
-                    }}
-                  >
-                    <div>
-                      <div className="text-xs font-bold text-[var(--c-text)]">{l.name}</div>
-                      <div className="text-[10px] text-[var(--c-text-dim)]">{l.team}</div>
-                    </div>
-                    {l.unread > 0 && (
-                      <span className="w-2.5 h-2.5 bg-[#8B5CF6] rounded-full" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="md:col-span-2 dash-card p-5 flex flex-col h-[500px]">
-              <div className="dash-section-title pb-3 border-b border-[var(--c-border)]">
-                Chat with {currentChat.name} ({currentChat.team})
-              </div>
-              <div className="flex-1 overflow-y-auto space-y-4 my-4 pr-2">
-                {currentChat.history.map((msg, idx) => (
-                  <div key={idx} className={`flex flex-col ${msg.sender === "Organizer" ? "items-end" : "items-start"}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--c-text-dim)]">
-                        {msg.sender}
-                      </span>
-                      <span className="text-[8px] text-[var(--c-text-muted)]">{msg.time}</span>
-                    </div>
-                    <div
-                      className="px-4 py-2 rounded-lg text-xs max-w-sm"
-                      style={{
-                        backgroundColor: msg.sender === "Organizer" ? "rgba(139, 92, 246, 0.1)" : "var(--c-surface3)",
-                        border: msg.sender === "Organizer" ? "1px solid rgba(139, 92, 246, 0.3)" : "1px solid var(--c-border)",
-                        color: "var(--c-text)",
-                      }}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <form onSubmit={handleSendChatMessage} className="flex gap-2">
-                <input
-                  value={chatText}
-                  onChange={(e) => setChatText(e.target.value)}
-                  placeholder={`Send message to ${currentChat.name}...`}
-                  className="dash-input flex-1"
-                />
-                <button
-                  type="submit"
-                  className="bg-[#8B5CF6] hover:bg-[#7c4fe3] text-white text-xs font-semibold uppercase tracking-widest px-5 py-2 rounded-lg transition-colors"
-                >
-                  Send
-                </button>
-              </form>
-            </div>
-          </div>
-        );
+        return <ChatManagementModule
+          chatLeaders={chatLeaders}
+          setChatLeaders={setChatLeaders}
+        />;
 
       case "teams":
-        return (
-          <div className="space-y-6">
-            <div className="dash-card p-5">
-              <div className="dash-section-title">Create Team & Assign Head</div>
-              <form onSubmit={handleCreateTeam} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div>
-                  <label className="dash-label">Team Name</label>
-                  <input
-                    value={newTeamName}
-                    onChange={(e) => setNewTeamName(e.target.value)}
-                    placeholder="e.g. Team Venom"
-                    className="dash-input"
-                  />
-                </div>
-                <div>
-                  <label className="dash-label">Game</label>
-                  <select
-                    value={newTeamGame}
-                    onChange={(e) => setNewTeamGame(e.target.value)}
-                    className="dash-select"
-                  >
-                    <option value="MLBB">MLBB</option>
-                    <option value="CODM">CODM</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="dash-label">Team Head</label>
-                  <input
-                    value={newTeamHead}
-                    onChange={(e) => setNewTeamHead(e.target.value)}
-                    placeholder="e.g. Marco Reyes"
-                    className="dash-input"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest py-2.5 rounded-lg transition-colors"
-                >
-                  Save Team
-                </button>
-              </form>
-            </div>
+        return <TeamManagementModule
+          teams={teams}
+          setTeams={setTeams}
 
-            <div className="dash-table-wrap">
-              <table className="w-full border-collapse">
-                <thead className="dash-thead">
-                  <tr>
-                    {["Team Name", "Game", "Team Head", "Players", "Status", "Actions"].map((h) => (
-                      <th key={h} className="dash-th">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {teams.map((t) => (
-                    <tr key={t.id} className="dash-tr">
-                      <td
-                        onClick={() => openTeamModal(t, "view")}
-                        className="dash-td font-semibold cursor-pointer text-[#00F5D4] hover:underline"
-                      >
-                        {t.name}
-                      </td>
-                      <td className="dash-td-muted">{t.game}</td>
-                      <td className="dash-td font-semibold">{t.head}</td>
-                      <td className="dash-td">{t.players.length}/5</td>
-                      <td className="dash-td">
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                            t.status === "active" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : "bg-[#FF4655]/20 text-[#FF4655]"
-                          }`}
-                        >
-                          {t.status}
-                        </span>
-                      </td>
-                      <td className="dash-td">
-                        <button
-                          onClick={() => openTeamModal(t, "edit")}
-                          className="flex items-center gap-1 dash-btn-ghost text-xs px-3 py-1 rounded"
-                        >
-                          <IconEdit size={11} /> Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+          newTeamName={newTeamName}
+          setNewTeamName={setNewTeamName}
+          newTeamGame={newTeamGame}
+          setNewTeamGame={setNewTeamGame}
+          newTeamHead={newTeamHead}
+          setNewTeamHead={setNewTeamHead}
+
+          teamModalType={teamModalType}
+          setTeamModalType={setTeamModalType}
+          selectedTeam={selectedTeam}
+          setSelectedTeam={setSelectedTeam}
+
+          editTeamName={editTeamName}
+          setEditTeamName={setEditTeamName}
+          editTeamHead={editTeamHead}
+          setEditTeamHead={setEditTeamHead}
+          editTeamStatus={editTeamStatus}
+          setEditTeamStatus={setEditTeamStatus}
+          editTeamPlayers={editTeamPlayers}
+          setEditTeamPlayers={setEditTeamPlayers}
+        />;
 
       case "draft":
-        const filteredUnpicked = freeAgents.filter((p) => {
-          const matchesSearch =
-            p.name.toLowerCase().includes(draftSearch.toLowerCase()) ||
-            p.ign.toLowerCase().includes(draftSearch.toLowerCase());
-          const matchesGame = draftGame === "All" || p.game === draftGame;
-          const matchesRole = draftRole === "All" || p.role === draftRole;
-          const matchesRank = draftRank === "All" || p.rank === draftRank;
-          return matchesSearch && matchesGame && matchesRole && matchesRank;
-        });
-
-        const filteredDrafted = draftedPlayers.filter((p) => {
-          const matchesSearch =
-            p.name.toLowerCase().includes(draftSearch.toLowerCase()) ||
-            p.ign.toLowerCase().includes(draftSearch.toLowerCase());
-          const matchesGame = draftGame === "All" || p.game === draftGame;
-          const matchesRole = draftRole === "All" || p.role === draftRole;
-          const matchesRank = draftRank === "All" || p.rank === draftRank;
-          return matchesSearch && matchesGame && matchesRole && matchesRank;
-        });
-
-        return (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <div className="lg:col-span-2 space-y-5">
-              <div className="dash-card p-4 flex flex-col md:flex-row gap-3">
-                <div className="flex-1">
-                  <input
-                    value={draftSearch}
-                    onChange={(e) => setDraftSearch(e.target.value)}
-                    placeholder="Search player name or IGN..."
-                    className="dash-input"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <select
-                    value={draftGame}
-                    onChange={(e) => {
-                      setDraftGame(e.target.value);
-                      setDraftRole("All");
-                      setDraftRank("All");
-                    }}
-                    className="dash-select text-xs"
-                  >
-                    <option value="All">All Games</option>
-                    <option value="MLBB">MLBB</option>
-                    <option value="CODM">CODM</option>
-                  </select>
-                  <select
-                    value={draftRole}
-                    onChange={(e) => setDraftRole(e.target.value)}
-                    className="dash-select text-xs"
-                  >
-                    {roleOptions.map((role) => (
-                      <option key={role} value={role}>{role}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={draftRank}
-                    onChange={(e) => setDraftRank(e.target.value)}
-                    className="dash-select text-xs"
-                  >
-                    {rankOptions.map((rank) => (
-                      <option key={rank} value={rank}>{rank}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="dash-card p-4 flex flex-col h-[400px]">
-                  <div className="dash-section-title pb-2 border-b border-[var(--c-border)]">
-                    Available Player Pool ({filteredUnpicked.length})
-                  </div>
-                  <div className="flex-1 overflow-y-auto space-y-2.5 my-3 pr-1">
-                    {filteredUnpicked.map((fa) => (
-                      <div
-                        key={fa.ign}
-                        onMouseEnter={() => setHoveredPlayer(fa)}
-                        onClick={() => setHoveredPlayer(fa)}
-                        className="flex items-center justify-between p-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface2)] hover:border-[#8B5CF6] transition-colors cursor-pointer"
-                      >
-                        <div>
-                          <div className="text-xs font-bold text-[var(--c-text)]">{fa.name}</div>
-                          <div className="text-[10px] text-[var(--c-text-muted)]">
-                            {fa.ign} · {fa.role} · {fa.rank}
-                          </div>
-                        </div>
-                        <select
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              handleDraftAction(fa, e.target.value);
-                            }
-                          }}
-                          className="dash-select w-24 text-[10px] py-1 px-1.5"
-                          defaultValue=""
-                        >
-                          <option value="" disabled>Draft to...</option>
-                          {teams.map((t) => (
-                            <option key={t.id} value={t.name}>{t.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="dash-card p-4 flex flex-col h-[400px]">
-                  <div className="dash-section-title pb-2 border-b border-[var(--c-border)]">
-                    Drafted Players ({filteredDrafted.length})
-                  </div>
-                  <div className="flex-1 overflow-y-auto space-y-2.5 my-3 pr-1">
-                    {filteredDrafted.map((dp) => (
-                      <div
-                        key={dp.ign}
-                        onMouseEnter={() => setHoveredPlayer(dp)}
-                        onClick={() => setHoveredPlayer(dp)}
-                        className="flex items-center justify-between p-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface2)] hover:border-[#00F5D4] transition-colors cursor-pointer"
-                      >
-                        <div>
-                          <div className="text-xs font-bold text-[var(--c-text)]">{dp.name}</div>
-                          <div className="text-[10px] text-[var(--c-text-muted)]">
-                            {dp.ign} · {dp.role} · {dp.rank}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-bold uppercase tracking-wider bg-[#00F5D4]/10 text-[#00F5D4] px-2 py-0.5 rounded">
-                            {dp.team}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveDrafted(dp);
-                            }}
-                            className="flex items-center gap-1 text-[#FF4655] text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-lg border border-[#FF4655]/20 hover:bg-[#FF4655]/10 transition-colors"
-                          >
-                            <IconX size={12} /> Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="dash-card p-5 sticky top-5">
-                <div className="dash-section-title pb-2 border-b border-[var(--c-border)]">
-                  Player Statistics Card
-                </div>
-                {hoveredPlayer ? (
-                  <div className="space-y-4 mt-4">
-                    <div className="text-center pb-3 border-b border-[var(--c-border)]">
-                      <div className="w-12 h-12 rounded-full bg-purple-500/20 text-[#8B5CF6] border border-[#8B5CF6] flex items-center justify-center font-bold text-lg mx-auto mb-2">
-                        {hoveredPlayer.name[0]}
-                      </div>
-                      <div className="text-sm font-bold text-[var(--c-text)]">{hoveredPlayer.name}</div>
-                      <div className="text-xs text-[var(--c-text-muted)]">IGN: {hoveredPlayer.ign}</div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-center">
-                      <div className="p-2.5 rounded bg-[var(--c-surface3)] border border-[var(--c-border)]">
-                        <div className="text-[10px] text-[var(--c-text-muted)]">Win Rate</div>
-                        <div className="text-sm font-bold text-[#00F5D4] mt-0.5">{hoveredPlayer.winRate}</div>
-                      </div>
-                      <div className="p-2.5 rounded bg-[var(--c-surface3)] border border-[var(--c-border)]">
-                        <div className="text-[10px] text-[var(--c-text-muted)]">KDA Ratio</div>
-                        <div className="text-sm font-bold text-purple-400 mt-0.5">{hoveredPlayer.kda}</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-[var(--c-text-muted)] mb-1.5 font-bold">
-                        Player Role & rank
-                      </div>
-                      <div className="text-xs text-[var(--c-text)]">
-                        Role: <span className="font-semibold text-purple-300">{hoveredPlayer.role}</span>
-                      </div>
-                      <div className="text-xs text-[var(--c-text)] mt-1">
-                        Rank: <span className="font-semibold text-purple-300">{hoveredPlayer.rank}</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-[var(--c-text-muted)] mb-1.5 font-bold">
-                        Recent History
-                      </div>
-                      <div className="flex gap-1">
-                        {hoveredPlayer.history.map((h, index) => (
-                          <span
-                            key={index}
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                              h === "Win" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : "bg-[#FF4655]/20 text-[#FF4655]"
-                            }`}
-                          >
-                            {h[0]}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-[var(--c-text-muted)] text-center py-12">
-                    Hover or select a player to view stats card details.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
+        return <DraftManagementModule
+          freeAgents={freeAgents}
+          setFreeAgents={setFreeAgents}
+          draftedPlayers={draftedPlayers}
+          setDraftedPlayers={setDraftedPlayers}
+          teams={teams}
+          setTeams={setTeams}
+        />;
 
       case "free_agents":
-        return (
-          <div className="space-y-6">
-            <div className="dash-card p-5">
-              <div className="dash-section-title">Add Free Agent Player</div>
-              <form onSubmit={handleCreateFreeAgent} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div>
-                  <label className="dash-label">Player Name</label>
-                  <input
-                    value={newFaName}
-                    onChange={(e) => setNewFaName(e.target.value)}
-                    placeholder="e.g. Ana Lim"
-                    className="dash-input"
-                  />
-                </div>
-                <div>
-                  <label className="dash-label">IGN</label>
-                  <input
-                    value={newFaIgn}
-                    onChange={(e) => setNewFaIgn(e.target.value)}
-                    placeholder="e.g. AnaLim_PH"
-                    className="dash-input"
-                  />
-                </div>
-                <div>
-                  <label className="dash-label">Game</label>
-                  <select
-                    value={newFaGame}
-                    onChange={(e) => setNewFaGame(e.target.value)}
-                    className="dash-select"
-                  >
-                    <option value="MLBB">MLBB</option>
-                    <option value="CODM">CODM</option>
-                  </select>
-                </div>
-                <button
-                  type="submit"
-                  className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest py-2.5 rounded-lg transition-colors"
-                >
-                  Create Agent
-                </button>
-              </form>
-            </div>
+        return <FreeAgentManagementModule
+          freeAgents={freeAgents}
+          setFreeAgents={setFreeAgents}
 
-            <div className="dash-card p-4">
-              <div className="relative mb-4">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-text-dim)]">
-                  <IconSearch size={14} />
-                </span>
-                <input
-                  value={freeAgentSearch}
-                  onChange={(e) => setFreeAgentSearch(e.target.value)}
-                  placeholder="Filter free agents..."
-                  className="dash-input pl-9"
-                />
-              </div>
+          newFaName={newFaName}
+          setNewFaName={setNewFaName}
+          newFaIgn={newFaIgn}
+          setNewFaIgn={setNewFaIgn}
+          newFaGame={newFaGame}
+          setNewFaGame={setNewFaGame}
+          newFaRole={newFaRole}
+          setNewFaRole={setNewFaRole}
+          newFaRank={newFaRank}
+          setNewFaRank={setNewFaRank}
+          newFaWinRate={newFaWinRate}
+          setNewFaWinRate={setNewFaWinRate}
+          newFaKda={newFaKda}
+          setNewFaKda={setNewFaKda}
 
-              <div className="dash-table-wrap">
-                <table className="w-full border-collapse">
-                  <thead className="dash-thead">
-                    <tr>
-                      {["Name", "IGN", "Game", "Role", "Rank", "Actions"].map((h) => (
-                        <th key={h} className="dash-th">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {freeAgents
-                      .filter(
-                        (fa) =>
-                          fa.name.toLowerCase().includes(freeAgentSearch.toLowerCase()) ||
-                          fa.ign.toLowerCase().includes(freeAgentSearch.toLowerCase())
-                      )
-                      .map((fa) => (
-                        <tr key={fa.ign} className="dash-tr">
-                          <td className="dash-td font-semibold">{fa.name}</td>
-                          <td className="dash-td-muted">{fa.ign}</td>
-                          <td className="dash-td">{fa.game}</td>
-                          <td className="dash-td">{fa.role}</td>
-                          <td className="dash-td font-bold text-purple-300">{fa.rank}</td>
-                          <td className="dash-td">
-                            <button
-                              onClick={() => setFreeAgents((prev) => prev.filter((p) => p.ign !== fa.ign))}
-                              className="dash-btn-ghost text-xs px-3 py-1 rounded"
-                            >
-                              Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        );
+          freeAgentSearch={freeAgentSearch}
+          setFreeAgentSearch={setFreeAgentSearch}
+
+          handleCreateFreeAgent={handleCreateFreeAgent}
+        />;
 
       case "tournaments":
-        return (
-          <div className="space-y-6">
-            <div className="dash-card p-5">
-              <div className="dash-section-title">Create Tournaments</div>
-              <form onSubmit={handleCreateTournament} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div>
-                  <label className="dash-label">Tournament Name</label>
-                  <input
-                    value={newTourneyName}
-                    onChange={(e) => setNewTourneyName(e.target.value)}
-                    placeholder="e.g. MLBB Championship"
-                    className="dash-input"
-                  />
-                </div>
-                <div>
-                  <label className="dash-label">Game</label>
-                  <select
-                    value={newTourneyGame}
-                    onChange={(e) => setNewTourneyGame(e.target.value)}
-                    className="dash-select"
-                  >
-                    <option value="MLBB">MLBB</option>
-                    <option value="CODM">CODM</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="dash-label">Max Teams</label>
-                  <select
-                    value={newTourneyMaxTeams}
-                    onChange={(e) => setNewTourneyMaxTeams(Number(e.target.value))}
-                    className="dash-select"
-                  >
-                    <option value="4">4 Teams</option>
-                    <option value="8">8 Teams</option>
-                    <option value="16">16 Teams</option>
-                  </select>
-                </div>
-                <button
-                  type="submit"
-                  className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest py-2.5 rounded-lg transition-colors"
-                >
-                  Save Tournament
-                </button>
-              </form>
-            </div>
-
-            <div className="dash-table-wrap">
-              <table className="w-full border-collapse">
-                <thead className="dash-thead">
-                  <tr>
-                    {["Tournament Name", "Game", "Format", "Teams Registered", "Status", "Actions"].map((h) => (
-                      <th key={h} className="dash-th">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tournaments.map((t) => (
-                    <tr key={t.id} className="dash-tr">
-                      <td
-                        onClick={() => openTourneyModal(t, "view")}
-                        className="dash-td font-semibold cursor-pointer text-[#00F5D4] hover:underline"
-                      >
-                        {t.name}
-                      </td>
-                      <td className="dash-td-muted">{t.game}</td>
-                      <td className="dash-td-muted">{t.format}</td>
-                      <td className="dash-td">{t.teamsList.length}/{t.maxTeams}</td>
-                      <td className="dash-td">
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                            t.status === "ongoing" ? "bg-[#FF4655]/20 text-[#FF4655]" : "bg-[#00F5D4]/15 text-[#00F5D4]"
-                          }`}
-                        >
-                          {t.status}
-                        </span>
-                      </td>
-                      <td className="dash-td">
-                        <button
-                          onClick={() => openTourneyModal(t, "edit")}
-                          className="dash-btn-ghost text-xs px-3 py-1 rounded"
-                        >
-                          Manage
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        return <TournamentManagementModule tournaments={tournaments} setTournaments={setTournaments} />;
 
       case "brackets":
         return (
@@ -1181,129 +411,22 @@ export default function OrganizerDashboard() {
         );
 
       case "results":
-        return (
-          <div className="space-y-5">
-            {resultsNotification && (
-              <div className="p-4 rounded-xl border border-[#00F5D4]/50 bg-[#00F5D4]/5 text-[#00F5D4] text-xs space-y-1 animate-fade-in">
-                <div className="font-bold uppercase tracking-wider">{resultsNotification.message}</div>
-                <div className="opacity-90">{resultsNotification.sub}</div>
-              </div>
-            )}
-
-            <div className="dash-card p-5">
-              <div className="dash-section-title">Record New Result</div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div>
-                  <label className="dash-label">Select Match</label>
-                  <select
-                    value={selectedMatchId}
-                    onChange={(e) => {
-                      setSelectedMatchId(e.target.value);
-                      const selected = matchesState.find((m) => m.id === e.target.value);
-                      if (selected) {
-                        setMatchWinner(selected.teamA);
-                      }
-                    }}
-                    className="dash-select"
-                  >
-                    {matchesState
-                      .filter((m) => m.status === "pending" && m.teamA !== "TBD" && m.teamB !== "TBD")
-                      .map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.teamA} vs {m.teamB} ({m.round})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="dash-label">Winner</label>
-                  <select
-                    value={matchWinner}
-                    onChange={(e) => setMatchWinner(e.target.value)}
-                    className="dash-select"
-                  >
-                    {(() => {
-                      const selected = matchesState.find((m) => m.id === selectedMatchId);
-                      if (!selected) return null;
-                      return (
-                        <>
-                          <option value={selected.teamA}>{selected.teamA}</option>
-                          <option value={selected.teamB}>{selected.teamB}</option>
-                        </>
-                      );
-                    })()}
-                  </select>
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="dash-label">Score A</label>
-                    <input
-                      type="number"
-                      value={scoreA}
-                      onChange={(e) => setScoreA(Number(e.target.value))}
-                      className="dash-input"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="dash-label">Score B</label>
-                    <input
-                      type="number"
-                      value={scoreB}
-                      onChange={(e) => setScoreB(Number(e.target.value))}
-                      className="dash-input"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleResultSubmit}
-                  className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest py-2.5 rounded-lg transition-colors"
-                >
-                  Submit Result
-                </button>
-              </div>
-            </div>
-
-            <div className="dash-table-wrap">
-              <table className="w-full border-collapse">
-                <thead className="dash-thead">
-                  <tr>
-                    {["Match", "Winner", "Score", "Round", "Status"].map((h) => (
-                      <th key={h} className="dash-th">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {matchesState.map((m) => (
-                    <tr key={m.id} className="dash-tr">
-                      <td className="dash-td font-semibold">
-                        {m.teamA} vs {m.teamB}
-                      </td>
-                      <td className="dash-td font-bold" style={{ color: m.winner ? "#00F5D4" : "var(--c-text-muted)" }}>
-                        {m.winner || "TBD"}
-                      </td>
-                      <td className="dash-td">
-                        {m.status === "completed" ? `${m.scoreA}-${m.scoreB}` : "-"}
-                      </td>
-                      <td className="dash-td-muted">{m.round}</td>
-                      <td className="dash-td">
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                            m.status === "completed" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : "bg-[#FF4655]/20 text-[#FF4655]"
-                          }`}
-                        >
-                          {m.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+        return <ResultsManagementModule
+          matchesState={matchesState}
+          setMatchesState={setMatchesState}
+          tournaments={tournaments}
+          setTournaments={setTournaments}
+          selectedMatchId={selectedMatchId}
+          setSelectedMatchId={setSelectedMatchId}
+          matchWinner={matchWinner}
+          setMatchWinner={setMatchWinner}
+          scoreA={scoreA}
+          setScoreA={setScoreA}
+          scoreB={scoreB}
+          setScoreB={setScoreB}
+          resultsNotification={resultsNotification}
+          setResultsNotification={setResultsNotification}
+        />;
 
       case "standings":
         const standingsList = [
@@ -1399,75 +522,18 @@ export default function OrganizerDashboard() {
         );
 
       case "announcements":
-        return (
-          <div className="space-y-6">
-            <div className="dash-card p-5">
-              <div className="dash-section-title">Submit Announcement for Admin Approval</div>
-              {annSuccess && (
-                <div className="bg-[#00F5D4]/10 border border-[#00F5D4]/30 text-[#00F5D4] text-xs rounded-lg px-4 py-2 mb-4">
-                  Announcement submitted for admin approval.
-                </div>
-              )}
-              <form onSubmit={handleAnnSubmit} className="space-y-3">
-                <div>
-                  <label className="dash-label">Title</label>
-                  <input
-                    value={newAnnTitle}
-                    onChange={(e) => setNewAnnTitle(e.target.value)}
-                    placeholder="Announcement title..."
-                    className="dash-input"
-                  />
-                </div>
-                <div>
-                  <label className="dash-label">Content</label>
-                  <textarea
-                    value={newAnnContent}
-                    onChange={(e) => setNewAnnContent(e.target.value)}
-                    rows={4}
-                    placeholder="Write announcement content..."
-                    className="dash-input"
-                    style={{ resize: "none" }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
-                >
-                  Submit Announcement
-                </button>
-              </form>
-            </div>
+        return <AnnouncementManagementModule
+          announcements={announcements}
+          setAnnouncements={setAnnouncements}
 
-            <div className="dash-table-wrap">
-              <table className="w-full border-collapse">
-                <thead className="dash-thead">
-                  <tr>
-                    {["Title", "Date Submitted", "Status"].map((h) => (
-                      <th key={h} className="dash-th">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {announcements.map((a) => (
-                    <tr key={a.id} className="dash-tr">
-                      <td className="dash-td font-medium">{a.title}</td>
-                      <td className="dash-td-muted">{a.submittedAt}</td>
-                      <td className="dash-td">
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                            a.status === "published" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : "bg-[#FF4655]/20 text-[#FF4655]"
-                          }`}
-                        >
-                          {a.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
+          newAnnTitle={newAnnTitle}
+          setNewAnnTitle={setNewAnnTitle}
+          newAnnContent={newAnnContent}
+          setNewAnnContent={setNewAnnContent}
+
+          annSuccess={annSuccess}
+          setAnnSuccess={setAnnSuccess}
+        />;
 
       case "calendar":
         return (
@@ -1755,141 +821,6 @@ export default function OrganizerDashboard() {
         </div>
       )}
 
-      {teamModalType !== "none" && selectedTeam && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-          }}
-        >
-          <div className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl w-full max-w-lg p-6 relative">
-            <button
-              onClick={() => {
-                setTeamModalType("none");
-                setSelectedTeam(null);
-              }}
-              className="absolute right-4 top-4 text-[var(--c-text-dim)] hover:text-[var(--c-text)]"
-            >
-              <IconX size={16} />
-            </button>
-            <h3 className="font-head text-xl font-bold text-[var(--c-text)] mb-4 uppercase">
-              {teamModalType === "edit" ? "Edit Team Details" : "Team Roster Information"}
-            </h3>
-
-            <div className="space-y-4">
-              {teamModalType === "edit" ? (
-                <>
-                  <div>
-                    <label className="dash-label">Team Name</label>
-                    <input
-                      value={editTeamName}
-                      onChange={(e) => setEditTeamName(e.target.value)}
-                      className="dash-input"
-                    />
-                  </div>
-                  <div>
-                    <label className="dash-label">Team Head</label>
-                    <input
-                      value={editTeamHead}
-                      onChange={(e) => setEditTeamHead(e.target.value)}
-                      className="dash-input"
-                    />
-                  </div>
-                  <div>
-                    <label className="dash-label">Members (Comma Separated)</label>
-                    <input
-                      value={editTeamPlayers}
-                      onChange={(e) => setEditTeamPlayers(e.target.value)}
-                      className="dash-input"
-                    />
-                  </div>
-                  <div>
-                    <label className="dash-label">Status</label>
-                    <select
-                      value={editTeamStatus}
-                      onChange={(e) => setEditTeamStatus(e.target.value)}
-                      className="dash-select"
-                    >
-                      <option value="active">active</option>
-                      <option value="incomplete">incomplete</option>
-                    </select>
-                  </div>
-                </>
-              ) : (
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Team Name</span>
-                    <span className="font-bold text-[var(--c-text)]">{selectedTeam.name}</span>
-                  </div>
-                  <div>
-                    <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Team Head</span>
-                    <span className="font-bold text-[var(--c-text)]">{selectedTeam.head}</span>
-                  </div>
-                  <div>
-                    <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Number of Players</span>
-                    <span className="font-bold text-[var(--c-text)]">{selectedTeam.players.length}/5</span>
-                  </div>
-                  <div>
-                    <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Status</span>
-                    <span className="font-bold text-[var(--c-text)]">{selectedTeam.status}</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px] mb-1.5">
-                      Roster Members List
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedTeam.players.map((plyr, idx) => (
-                        <span key={idx} className="bg-[var(--c-surface3)] border border-[var(--c-border)] px-2.5 py-1 rounded text-[11px] text-[var(--c-text)]">
-                          {plyr}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              {teamModalType === "edit" ? (
-                <>
-                  <button
-                    onClick={handleSaveTeamDetails}
-                    className="bg-[#00F5D4] hover:bg-[#00d8bc] text-black text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTeamModalType("none");
-                      setSelectedTeam(null);
-                    }}
-                    className="dash-btn-ghost text-xs px-4 py-2 rounded-lg"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => {
-                    setTeamModalType("none");
-                    setSelectedTeam(null);
-                  }}
-                  className="bg-[#8B5CF6] hover:bg-[#7c4fe3] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
-                >
-                  Close
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

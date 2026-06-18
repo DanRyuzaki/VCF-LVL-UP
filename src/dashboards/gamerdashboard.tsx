@@ -482,7 +482,7 @@ function TournamentInfoSection() {
   return (
     <div className="space-y-6">
       <div className="dash-card p-6">
-        <h3 className="font-head text-2xl font-bold text-white mb-2">MLBB Championship — Season 4</h3>
+        <h3 className="font-head text-2xl font-bold text-[var(--c-text)] mb-2">MLBB Championship — Season 4</h3>
         <p className="text-xs text-[var(--c-text-dim)] leading-relaxed mb-6">
           The premier faith youth esports tournament. Bringing teams and draft players together in a single elimination championship.
         </p>
@@ -794,32 +794,8 @@ export default function GamerDashboard() {
       >
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--c-border)] pb-5">
           <div>
-            <h2 className="font-head text-2xl font-bold tracking-wider text-white uppercase">Gamer Space</h2>
+            <h2 className="font-head text-2xl font-bold tracking-wider text-[var(--c-text)] uppercase">Gamer Space</h2>
             <p className="text-xs text-[var(--c-text-dim)]">Simulated gamer sub-roles environment</p>
-          </div>
-
-          <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[var(--c-surface)] border border-[var(--c-border)] self-start md:self-auto">
-            {[
-              { id: "team_leader", label: "Team Leader", color: "#FF4655" },
-              { id: "team_member", label: "Team Member", color: "#00F5D4" },
-              { id: "free_agent", label: "Free Agent", color: "#8B5CF6" },
-            ].map((tab) => {
-              const active = gamerType === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleGamerTypeChange(tab.id as "team_leader" | "team_member" | "free_agent")}
-                  className="px-3.5 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all"
-                  style={{
-                    backgroundColor: active ? tab.color : "transparent",
-                    color: active ? "#000000" : "var(--c-text-muted)",
-                    boxShadow: active ? `0 0 12px ${tab.color}40` : "none",
-                  }}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
           </div>
         </div>
 

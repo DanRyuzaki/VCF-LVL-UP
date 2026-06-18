@@ -10,33 +10,7 @@ import BracketManagementModule from "@/modules/bracket-management";
 import AnnouncementManagementModule from "@/modules/announcement-management";
 import CalendarManagementModule from "@/modules/calendar-management";
 import { matches } from "@/data/matches";
-
-function OverviewSection() {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard value="2"  label="Active Tournaments" accent="red" />
-        <StatCard value="8"  label="Teams Registered"   accent="teal" />
-        <StatCard value="42" label="Drafted Players"     accent="purple" />
-        <StatCard value="6"  label="Matches Upcoming" />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="dash-card p-5">
-          <div className="dash-section-title">Pending Submissions</div>
-          {[
-            { label: "Draft Announcement",    badge: "Pending",   badgeStyle: "bg-[#FF4655]/20 text-[#FF4655]" },
-            { label: "Match Schedule — Jun 14", badge: "Pending", badgeStyle: "bg-[#FF4655]/20 text-[#FF4655]" },
-            { label: "CODM Clash Details",    badge: "Submitted", badgeStyle: "" },
-          ].map((item) => (
-            <div key={item.label} className="dash-row-item">
-              <span className="text-sm" style={{ color: "var(--c-text)" }}>{item.label}</span>
-              <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${item.badgeStyle}`} style={!item.badgeStyle ? { backgroundColor: "var(--c-surface3)", color: "var(--c-text-dim)" } : {}}>{item.badge}</span>
-            </div>
-          ))}
-        </div>
 import { IconPlus, IconEdit, IconX, IconSearch, IconCheck } from "@/components/shared/icons";
-import BracketManagementModule from "@/modules/bracket-management";
 
 interface Team {
   id: string;
@@ -155,8 +129,8 @@ export default function OrganizerDashboard() {
   const [freeAgents, setFreeAgents] = useState<Player[]>([
     { name: "Ana Lim", ign: "AnaLim_PH", game: "MLBB", role: "Mid Lane", rank: "Mythic", winRate: "64%", kda: "4.2", history: ["Win", "Win", "Win", "Loss", "Win"] },
     { name: "Ben Torres", ign: "BenT_MLBB", game: "MLBB", role: "Jungler", rank: "Mythic", winRate: "57%", kda: "3.5", history: ["Win", "Loss", "Win", "Win", "Loss"] },
-    { name: "Claire Ong", ign: "ClaireOng", game: "CODM", role: "Gold Lane", rank: "Mythical Glory", winRate: "69%", kda: "5.1", history: ["Win", "Win", "Win", "Loss", "Win"] },
-    { name: "Dan Perez", ign: "DanP_COD", game: "CODM", role: "Roamer", rank: "Legend", winRate: "55%", kda: "3.2", history: ["Loss", "Win", "Loss", "Win", "Win"] },
+    { name: "Claire Ong", ign: "ClaireOng", game: "CODM", role: "Supports", rank: "Elite", winRate: "69%", kda: "5.1", history: ["Win", "Win", "Win", "Loss", "Win"] },
+    { name: "Dan Perez", ign: "DanP_COD", game: "CODM", role: "Objective", rank: "Pro", winRate: "55%", kda: "3.2", history: ["Loss", "Win", "Loss", "Win", "Win"] },
     { name: "Michael Chang", ign: "MikeC_Mid", game: "MLBB", role: "Mid Lane", rank: "Mythic", winRate: "60%", kda: "4.0", history: ["Win", "Loss", "Win", "Loss", "Win"] },
     { name: "Sarah Connor", ign: "SarahC_XP", game: "MLBB", role: "XP Lane", rank: "Legend", winRate: "58%", kda: "3.9", history: ["Loss", "Loss", "Win", "Win", "Win"] },
     { name: "David Kim", ign: "DaveK_Roam", game: "MLBB", role: "Roamer", rank: "Mythic", winRate: "61%", kda: "4.6", history: ["Win", "Win", "Loss", "Win", "Win"] },
@@ -439,9 +413,18 @@ export default function OrganizerDashboard() {
   };
 
   const [draftSearch, setDraftSearch] = useState("");
+  const [draftGame, setDraftGame] = useState("All");
   const [draftRole, setDraftRole] = useState("All");
   const [draftRank, setDraftRank] = useState("All");
   const [hoveredPlayer, setHoveredPlayer] = useState<Player | null>(null);
+
+  const roleOptions = draftGame === "CODM"
+    ? ["All Roles", "Slayers", "Anchors", "Supports", "Objective"]
+    : ["All Roles", "XP Lane", "Gold Lane", "Mid Lane", "Roamer", "Jungler"];
+
+  const rankOptions = draftGame === "CODM"
+    ? ["All Ranks", "Rookie", "Veteran", "Elite", "Pro", "Master", "Grandmaster", "Legendary"]
+    : ["All Ranks", "Mythic", "Mythical Glory", "Legend"];
 
   const [freeAgentSearch, setFreeAgentSearch] = useState("");
   const [newFaName, setNewFaName] = useState("");
@@ -484,6 +467,25 @@ export default function OrganizerDashboard() {
         return t;
       })
     );
+  };
+
+  const handleRemoveDrafted = (player: Player) => {
+    setDraftedPlayers((prev) => prev.filter((p) => p.ign !== player.ign));
+    setFreeAgents((prev) => [...prev, { ...player, team: undefined }]);
+    setTeams((prev) =>
+      prev.map((t) => {
+        if (t.name === player.team) {
+          return {
+            ...t,
+            players: t.players.filter((name) => name !== player.name),
+          };
+        }
+        return t;
+      })
+    );
+    if (hoveredPlayer?.ign === player.ign) {
+      setHoveredPlayer(null);
+    }
   };
 
   const [newAnnTitle, setNewAnnTitle] = useState("");
@@ -588,7 +590,7 @@ export default function OrganizerDashboard() {
                     <div key={m.id} className="flex items-start gap-3 py-2 border-b border-[var(--c-border)]">
                       <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-[#FF4655]" />
                       <div>
-                        <div className="text-xs font-bold text-white">{m.teamA} vs {m.teamB} completed</div>
+                        <div className="text-xs font-bold text-[var(--c-text)]">{m.teamA} vs {m.teamB} completed</div>
                         <div className="text-[10px] text-[var(--c-text-muted)]">Winner: {m.winner} ({m.scoreA}-{m.scoreB})</div>
                       </div>
                     </div>
@@ -622,7 +624,7 @@ export default function OrganizerDashboard() {
                     }}
                   >
                     <div>
-                      <div className="text-xs font-bold text-white">{l.name}</div>
+                      <div className="text-xs font-bold text-[var(--c-text)]">{l.name}</div>
                       <div className="text-[10px] text-[var(--c-text-dim)]">{l.team}</div>
                     </div>
                     {l.unread > 0 && (
@@ -772,57 +774,65 @@ export default function OrganizerDashboard() {
           const matchesSearch =
             p.name.toLowerCase().includes(draftSearch.toLowerCase()) ||
             p.ign.toLowerCase().includes(draftSearch.toLowerCase());
+          const matchesGame = draftGame === "All" || p.game === draftGame;
           const matchesRole = draftRole === "All" || p.role === draftRole;
           const matchesRank = draftRank === "All" || p.rank === draftRank;
-          return matchesSearch && matchesRole && matchesRank;
+          return matchesSearch && matchesGame && matchesRole && matchesRank;
         });
 
         const filteredDrafted = draftedPlayers.filter((p) => {
           const matchesSearch =
             p.name.toLowerCase().includes(draftSearch.toLowerCase()) ||
             p.ign.toLowerCase().includes(draftSearch.toLowerCase());
+          const matchesGame = draftGame === "All" || p.game === draftGame;
           const matchesRole = draftRole === "All" || p.role === draftRole;
           const matchesRank = draftRank === "All" || p.rank === draftRank;
-          return matchesSearch && matchesRole && matchesRank;
+          return matchesSearch && matchesGame && matchesRole && matchesRank;
         });
 
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 space-y-5">
               <div className="dash-card p-4 flex flex-col md:flex-row gap-3">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-text-dim)]">
-                    <IconSearch size={14} />
-                  </span>
+                <div className="flex-1">
                   <input
                     value={draftSearch}
                     onChange={(e) => setDraftSearch(e.target.value)}
                     placeholder="Search player name or IGN..."
-                    className="dash-input pl-9"
+                    className="dash-input"
                   />
                 </div>
                 <div className="flex gap-2">
+                  <select
+                    value={draftGame}
+                    onChange={(e) => {
+                      setDraftGame(e.target.value);
+                      setDraftRole("All");
+                      setDraftRank("All");
+                    }}
+                    className="dash-select text-xs"
+                  >
+                    <option value="All">All Games</option>
+                    <option value="MLBB">MLBB</option>
+                    <option value="CODM">CODM</option>
+                  </select>
                   <select
                     value={draftRole}
                     onChange={(e) => setDraftRole(e.target.value)}
                     className="dash-select text-xs"
                   >
-                    <option value="All">All Roles</option>
-                    <option value="XP Lane">XP Lane</option>
-                    <option value="Gold Lane">Gold Lane</option>
-                    <option value="Mid Lane">Mid Lane</option>
-                    <option value="Roamer">Roamer</option>
-                    <option value="Jungler">Jungler</option>
+                    {roleOptions.map((role) => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
                   </select>
                   <select
                     value={draftRank}
                     onChange={(e) => setDraftRank(e.target.value)}
                     className="dash-select text-xs"
                   >
-                    <option value="All">All Ranks</option>
-                    <option value="Mythic">Mythic</option>
-                    <option value="Mythical Glory">Mythical Glory</option>
-                    <option value="Legend">Legend</option>
+                    {rankOptions.map((rank) => (
+                      <option key={rank} value={rank}>{rank}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -841,7 +851,7 @@ export default function OrganizerDashboard() {
                         className="flex items-center justify-between p-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface2)] hover:border-[#8B5CF6] transition-colors cursor-pointer"
                       >
                         <div>
-                          <div className="text-xs font-bold text-white">{fa.name}</div>
+                          <div className="text-xs font-bold text-[var(--c-text)]">{fa.name}</div>
                           <div className="text-[10px] text-[var(--c-text-muted)]">
                             {fa.ign} · {fa.role} · {fa.rank}
                           </div>
@@ -878,14 +888,25 @@ export default function OrganizerDashboard() {
                         className="flex items-center justify-between p-3 rounded-lg border border-[var(--c-border)] bg-[var(--c-surface2)] hover:border-[#00F5D4] transition-colors cursor-pointer"
                       >
                         <div>
-                          <div className="text-xs font-bold text-white">{dp.name}</div>
+                          <div className="text-xs font-bold text-[var(--c-text)]">{dp.name}</div>
                           <div className="text-[10px] text-[var(--c-text-muted)]">
                             {dp.ign} · {dp.role} · {dp.rank}
                           </div>
                         </div>
-                        <span className="text-[9px] font-bold uppercase tracking-wider bg-[#00F5D4]/10 text-[#00F5D4] px-2 py-0.5 rounded">
-                          {dp.team}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-[#00F5D4]/10 text-[#00F5D4] px-2 py-0.5 rounded">
+                            {dp.team}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveDrafted(dp);
+                            }}
+                            className="flex items-center gap-1 text-[#FF4655] text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-lg border border-[#FF4655]/20 hover:bg-[#FF4655]/10 transition-colors"
+                          >
+                            <IconX size={12} /> Remove
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -904,7 +925,7 @@ export default function OrganizerDashboard() {
                       <div className="w-12 h-12 rounded-full bg-purple-500/20 text-[#8B5CF6] border border-[#8B5CF6] flex items-center justify-center font-bold text-lg mx-auto mb-2">
                         {hoveredPlayer.name[0]}
                       </div>
-                      <div className="text-sm font-bold text-white">{hoveredPlayer.name}</div>
+                      <div className="text-sm font-bold text-[var(--c-text)]">{hoveredPlayer.name}</div>
                       <div className="text-xs text-[var(--c-text-muted)]">IGN: {hoveredPlayer.ign}</div>
                     </div>
 
@@ -923,10 +944,10 @@ export default function OrganizerDashboard() {
                       <div className="text-[10px] uppercase tracking-wider text-[var(--c-text-muted)] mb-1.5 font-bold">
                         Player Role & rank
                       </div>
-                      <div className="text-xs text-white">
+                      <div className="text-xs text-[var(--c-text)]">
                         Role: <span className="font-semibold text-purple-300">{hoveredPlayer.role}</span>
                       </div>
-                      <div className="text-xs text-white mt-1">
+                      <div className="text-xs text-[var(--c-text)] mt-1">
                         Rank: <span className="font-semibold text-purple-300">{hoveredPlayer.rank}</span>
                       </div>
                     </div>
@@ -1339,7 +1360,7 @@ export default function OrganizerDashboard() {
               ].map((s, i) => (
                 <div key={i} className="dash-card p-5">
                   <div className="text-[10px] uppercase tracking-wider text-[var(--c-text-muted)]">{s.label}</div>
-                  <div className="font-head text-2xl font-bold text-white mt-1">{s.value}</div>
+                  <div className="font-head text-2xl font-bold text-[var(--c-text)] mt-1">{s.value}</div>
                 </div>
               ))}
             </div>
@@ -1367,7 +1388,7 @@ export default function OrganizerDashboard() {
                         <td className="dash-td-muted">{p.ign}</td>
                         <td className="dash-td font-bold text-purple-300">{p.kda}</td>
                         <td className="dash-td text-[#00F5D4]">{p.wr}</td>
-                        <td className="dash-td font-bold text-white">{p.rating} MMR</td>
+                        <td className="dash-td font-bold text-[var(--c-text)]">{p.rating} MMR</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1501,7 +1522,7 @@ export default function OrganizerDashboard() {
             </div>
 
             <div className="dash-card p-5">
-              <div className="font-head text-sm font-semibold uppercase tracking-wider mb-4 text-white">
+              <div className="font-head text-sm font-semibold uppercase tracking-wider mb-4 text-[var(--c-text)]">
                 Upcoming Requested & Approved Events
               </div>
               <div className="dash-table-wrap">
@@ -1579,18 +1600,6 @@ export default function OrganizerDashboard() {
           {renderSection()}
         </main>
       </div>
-      <main
-        className="flex-1"
-        style={{
-          minHeight: "calc(100vh - 60px)",
-          overflowY: "auto",
-          padding: "32px",
-          backgroundColor: "var(--c-page-bg)",
-        }}
-      >
-        <PageHeader title={meta.title} subtitle={meta.subtitle} />
-        {renderSection()}
-      </main>
 
       {tourneyModalType !== "none" && selectedTourney && (
         <div
@@ -1612,11 +1621,11 @@ export default function OrganizerDashboard() {
                 setTourneyModalType("none");
                 setSelectedTourney(null);
               }}
-              className="absolute right-4 top-4 text-[var(--c-text-dim)] hover:text-white"
+              className="absolute right-4 top-4 text-[var(--c-text-dim)] hover:text-[var(--c-text)]"
             >
               <IconX size={16} />
             </button>
-            <h3 className="font-head text-xl font-bold text-white mb-4 uppercase">
+            <h3 className="font-head text-xl font-bold text-[var(--c-text)] mb-4 uppercase">
               {tourneyModalType === "edit" ? "Edit Tournament Details" : "Tournament Specifications"}
             </h3>
 
@@ -1664,19 +1673,19 @@ export default function OrganizerDashboard() {
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Name</span>
-                    <span className="font-bold text-white">{selectedTourney.name}</span>
+                    <span className="font-bold text-[var(--c-text)]">{selectedTourney.name}</span>
                   </div>
                   <div>
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Game</span>
-                    <span className="font-bold text-white">{selectedTourney.game}</span>
+                    <span className="font-bold text-[var(--c-text)]">{selectedTourney.game}</span>
                   </div>
                   <div>
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Format</span>
-                    <span className="font-bold text-white">{selectedTourney.format}</span>
+                    <span className="font-bold text-[var(--c-text)]">{selectedTourney.format}</span>
                   </div>
                   <div>
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Status</span>
-                    <span className="font-bold text-white">{selectedTourney.status}</span>
+                    <span className="font-bold text-[var(--c-text)]">{selectedTourney.status}</span>
                   </div>
                   <div className="col-span-2">
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px] mb-1">
@@ -1684,7 +1693,7 @@ export default function OrganizerDashboard() {
                     </span>
                     <div className="space-y-1 bg-[var(--c-surface2)] p-2.5 rounded border border-[var(--c-border)] max-h-24 overflow-y-auto">
                       {selectedTourney.teamsList.map((tm, idx) => (
-                        <div key={idx} className="flex justify-between text-[11px] text-white">
+                        <div key={idx} className="flex justify-between text-[11px] text-[var(--c-text)]">
                           <span>{tm.name}</span>
                           <span className="text-[var(--c-text-muted)]">{tm.players} players</span>
                         </div>
@@ -1698,7 +1707,7 @@ export default function OrganizerDashboard() {
                     <div className="flex flex-wrap gap-1">
                       {selectedTourney.matchesList.length > 0 ? (
                         selectedTourney.matchesList.map((mid) => (
-                          <span key={mid} className="bg-[var(--c-surface3)] border border-[var(--c-border)] px-2 py-0.5 rounded text-[10px] text-white">
+                          <span key={mid} className="bg-[var(--c-surface3)] border border-[var(--c-border)] px-2 py-0.5 rounded text-[10px] text-[var(--c-text)]">
                             {mid}
                           </span>
                         ))
@@ -1766,11 +1775,11 @@ export default function OrganizerDashboard() {
                 setTeamModalType("none");
                 setSelectedTeam(null);
               }}
-              className="absolute right-4 top-4 text-[var(--c-text-dim)] hover:text-white"
+              className="absolute right-4 top-4 text-[var(--c-text-dim)] hover:text-[var(--c-text)]"
             >
               <IconX size={16} />
             </button>
-            <h3 className="font-head text-xl font-bold text-white mb-4 uppercase">
+            <h3 className="font-head text-xl font-bold text-[var(--c-text)] mb-4 uppercase">
               {teamModalType === "edit" ? "Edit Team Details" : "Team Roster Information"}
             </h3>
 
@@ -1817,19 +1826,19 @@ export default function OrganizerDashboard() {
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Team Name</span>
-                    <span className="font-bold text-white">{selectedTeam.name}</span>
+                    <span className="font-bold text-[var(--c-text)]">{selectedTeam.name}</span>
                   </div>
                   <div>
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Team Head</span>
-                    <span className="font-bold text-white">{selectedTeam.head}</span>
+                    <span className="font-bold text-[var(--c-text)]">{selectedTeam.head}</span>
                   </div>
                   <div>
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Number of Players</span>
-                    <span className="font-bold text-white">{selectedTeam.players.length}/5</span>
+                    <span className="font-bold text-[var(--c-text)]">{selectedTeam.players.length}/5</span>
                   </div>
                   <div>
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px]">Status</span>
-                    <span className="font-bold text-white">{selectedTeam.status}</span>
+                    <span className="font-bold text-[var(--c-text)]">{selectedTeam.status}</span>
                   </div>
                   <div className="col-span-2">
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px] mb-1.5">
@@ -1837,7 +1846,7 @@ export default function OrganizerDashboard() {
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedTeam.players.map((plyr, idx) => (
-                        <span key={idx} className="bg-[var(--c-surface3)] border border-[var(--c-border)] px-2.5 py-1 rounded text-[11px] text-white">
+                        <span key={idx} className="bg-[var(--c-surface3)] border border-[var(--c-border)] px-2.5 py-1 rounded text-[11px] text-[var(--c-text)]">
                           {plyr}
                         </span>
                       ))}

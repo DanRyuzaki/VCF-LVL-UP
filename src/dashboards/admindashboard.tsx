@@ -3,6 +3,7 @@ import { useState } from "react";
 import Sidebar from "@/components/shared/sidebar";
 import StatCard from "@/components/shared/stat-card";
 import PageHeader from "@/components/shared/page-header";
+import DashboardHeader from "@/components/shared/dashboard-header";
 import UserManagementModule from "@/modules/user-management";
 import CalendarManagementModule from "@/modules/calendar-management";
 import LivestreamManagementModule from "@/modules/livestream-management";
@@ -187,7 +188,7 @@ export default function AdminDashboard() {
     switch (section) {
       case "overview": return <OverviewSection />;
       case "approvals": return <ApprovalsSection />;
-      case "users": return <UserManagementModule />;
+      case "users": return <UserManagementModule context="admin" />;
       case "tournaments": return <TournamentMonitorSection />;
       case "livestream": return <LivestreamManagementModule showManageControls />;
       case "calendar": return <CalendarManagementModule showSubmitForm showApproveActions />;
@@ -199,18 +200,20 @@ export default function AdminDashboard() {
   return (
     <div className="flex">
       <Sidebar role="admin" activeSection={section} onSectionChange={setSection} />
-      <main
-        className="flex-1"
-        style={{
-          minHeight: "calc(100vh - 60px)",
-          overflowY: "auto",
-          padding: "32px",
-          backgroundColor: "var(--c-page-bg)",
-        }}
-      >
-        <PageHeader title={meta.title} subtitle={meta.subtitle} />
-        {renderSection()}
-      </main>
+      <div className="flex-1 flex flex-col min-h-screen">
+        <DashboardHeader role="admin" />
+        <main
+          className="flex-1"
+          style={{
+            overflowY: "auto",
+            padding: "32px",
+            backgroundColor: "var(--c-page-bg)",
+          }}
+        >
+          <PageHeader title={meta.title} subtitle={meta.subtitle} />
+          {renderSection()}
+        </main>
+      </div>
     </div>
   );
 }

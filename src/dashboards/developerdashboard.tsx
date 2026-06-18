@@ -3,7 +3,16 @@ import { useState } from "react";
 import Sidebar from "@/components/shared/sidebar";
 import StatCard from "@/components/shared/stat-card";
 import PageHeader from "@/components/shared/page-header";
+import DashboardHeader from "@/components/shared/dashboard-header";
 import UserManagementModule from "@/modules/user-management";
+import SuspendModal from "@/modules/role-management/suspend-modal";
+import RestoreModal from "@/modules/role-management/restore-modal";
+import ClearCacheModal from "@/modules/maintenance/clear-cache-modal";
+import BackupModal from "@/modules/maintenance/backup-modal";
+import HealthCheckModal from "@/modules/maintenance/health-check-modal";
+import ExportLogsModal from "@/modules/maintenance/export-logs-modal";
+import MaintenanceModeModal from "@/modules/maintenance/maintenance-mode-modal";
+import RestartServicesModal from "@/modules/maintenance/restart-services-modal";
 
 const systemLogs = [
   { time: "2025-06-12 14:02:11", type: "INFO", msg: "User login: marco@faith.com [Organizer]" },
@@ -95,51 +104,103 @@ function ErrorReportsSection() {
 }
 
 function RoleManagementSection() {
+  const [users, setUsers] = useState([
+    { name: "John Dela Cruz", role: "Gamer", status: "active" },
+    { name: "Ben Torres", role: "Gamer", status: "suspended" },
+    { name: "Liza Cruz", role: "Gamer", status: "active" },
+  ]);
+  const [suspendTarget, setSuspendTarget] = useState<{ name: string; role: string } | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<{ name: string; role: string } | null>(null);
+
+  const handleSuspend = (reason: string) => {
+    if (!suspendTarget) return;
+    setUsers((prev) =>
+      prev.map((u) => (u.name === suspendTarget.name ? { ...u, status: "suspended" } : u))
+    );
+    setSuspendTarget(null);
+  };
+
+  const handleRestore = () => {
+    if (!restoreTarget) return;
+    setUsers((prev) =>
+      prev.map((u) => (u.name === restoreTarget.name ? { ...u, status: "active" } : u))
+    );
+    setRestoreTarget(null);
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-      <div className="dash-card p-5">
-        <div className="dash-section-title">Assign / Change Role</div>
-        <div className="space-y-3">
-          <div>
-            <label className="dash-label">Select User</label>
-            <select className="dash-select"><option>Marco Reyes</option><option>Anna Cruz</option><option>John Dela Cruz</option></select>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="dash-card p-5">
+          <div className="dash-section-title">Assign / Change Role</div>
+          <div className="space-y-3">
+            <div>
+              <label className="dash-label">Select User</label>
+              <select className="dash-select"><option>Marco Reyes</option><option>Anna Cruz</option><option>John Dela Cruz</option></select>
+            </div>
+            <div>
+              <label className="dash-label">New Role</label>
+              <select className="dash-select"><option>Admin</option><option>Organizer</option><option>Gamer</option></select>
+            </div>
+            <button className="w-full bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest py-2.5 rounded-lg transition-colors">Update Role</button>
           </div>
-          <div>
-            <label className="dash-label">New Role</label>
-            <select className="dash-select"><option>Admin</option><option>Organizer</option><option>Gamer</option></select>
-          </div>
-          <button className="w-full bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest py-2.5 rounded-lg transition-colors">Update Role</button>
+        </div>
+
+        <div className="dash-card p-5">
+          <div className="dash-section-title">Account Actions</div>
+          {users.map((u) => (
+            <div key={u.name} className="dash-row-item">
+              <div>
+                <div className="text-sm font-medium" style={{ color: "var(--c-text)" }}>{u.name}</div>
+                <div className="text-xs" style={{ color: "var(--c-text-dim)" }}>{u.role} · {u.status}</div>
+              </div>
+              {u.status === "active"
+                ? <button
+                    onClick={() => setSuspendTarget({ name: u.name, role: u.role })}
+                    className="dash-btn-ghost text-xs px-3 py-1 rounded"
+                    style={{ color: "var(--c-text-dim)" }}
+                    onMouseEnter={(e) => { (e.currentTarget).style.color = "#FF4655"; (e.currentTarget).style.borderColor = "#FF4655"; }}
+                    onMouseLeave={(e) => { (e.currentTarget).style.color = "var(--c-text-dim)"; (e.currentTarget).style.borderColor = "var(--c-border)"; }}
+                  >Suspend</button>
+                : <button
+                    onClick={() => setRestoreTarget({ name: u.name, role: u.role })}
+                    className="bg-[#00F5D4]/20 text-[#00F5D4] hover:bg-[#00F5D4]/30 text-xs font-semibold px-3 py-1 rounded transition-colors"
+                  >Restore</button>
+              }
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="dash-card p-5">
-        <div className="dash-section-title">Account Actions</div>
-        {[
-          { name: "John Dela Cruz", role: "Gamer", status: "active" },
-          { name: "Ben Torres", role: "Gamer", status: "suspended" },
-          { name: "Liza Cruz", role: "Gamer", status: "active" },
-        ].map((u) => (
-          <div key={u.name} className="dash-row-item">
-            <div>
-              <div className="text-sm font-medium" style={{ color: "var(--c-text)" }}>{u.name}</div>
-              <div className="text-xs" style={{ color: "var(--c-text-dim)" }}>{u.role} · {u.status}</div>
-            </div>
-            {u.status === "active"
-              ? <button className="dash-btn-ghost text-xs px-3 py-1 rounded" style={{ color: "var(--c-text-dim)" }} onMouseEnter={(e) => { (e.currentTarget).style.color = "#FF4655"; (e.currentTarget).style.borderColor = "#FF4655"; }} onMouseLeave={(e) => { (e.currentTarget).style.color = "var(--c-text-dim)"; (e.currentTarget).style.borderColor = "var(--c-border)"; }}>Suspend</button>
-              : <button className="bg-[#00F5D4]/20 text-[#00F5D4] hover:bg-[#00F5D4]/30 text-xs font-semibold px-3 py-1 rounded transition-colors">Restore</button>
-            }
-          </div>
-        ))}
-      </div>
-    </div>
+      {/* Suspend Modal */}
+      {suspendTarget && (
+        <SuspendModal
+          userName={suspendTarget.name}
+          userRole={suspendTarget.role}
+          onClose={() => setSuspendTarget(null)}
+          onConfirm={handleSuspend}
+        />
+      )}
+
+      {/* Restore Modal */}
+      {restoreTarget && (
+        <RestoreModal
+          userName={restoreTarget.name}
+          userRole={restoreTarget.role}
+          onClose={() => setRestoreTarget(null)}
+          onConfirm={handleRestore}
+        />
+      )}
+    </>
   );
 }
 
 function MaintenanceSection() {
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+
   const tools = [
     {
       icon: (
-
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="12" cy="12" r="4" stroke="#ff4655" strokeWidth="1.8" />
           <line x1="12" y1="2" x2="12" y2="5" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
@@ -152,31 +213,27 @@ function MaintenanceSection() {
           <line x1="16.95" y1="7.05" x2="19.07" y2="4.93" stroke="#ff4655" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       ),
-      label: "Clear Cache", sub: "Flush system cache", action: "Cache cleared!",
+      label: "Clear Cache", sub: "Flush system cache", key: "clearCache",
     },
     {
       icon: (
-
-
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2L4 6V12C4 16.42 7.48 20.58 12 22C16.52 20.58 20 16.42 20 12V6L12 2Z" stroke="#00d4ff" strokeWidth="1.7" strokeLinejoin="round" />
           <polyline points="8.5 12 11 14.5 15.5 10" stroke="#00d4ff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
-      label: "Backup Data", sub: "Export Firestore snapshot", action: "Backup initiated!",
+      label: "Backup Data", sub: "Export Firestore snapshot", key: "backup",
     },
     {
       icon: (
-
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <polyline points="2 12 6 12 8 6 10 18 13 9 15 14 17 12 22 12" stroke="#a855f7" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
-      label: "Health Check", sub: "Run system diagnostics", action: "All systems healthy.",
+      label: "Health Check", sub: "Run system diagnostics", key: "healthCheck",
     },
     {
       icon: (
-
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="3" y="3" width="18" height="18" rx="3" stroke="#00d4ff" strokeWidth="1.7" />
           <line x1="7" y1="8" x2="12" y2="8" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round" />
@@ -185,45 +242,54 @@ function MaintenanceSection() {
           <line x1="3" y1="18" x2="17" y2="18" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       ),
-      label: "Export Logs", sub: "Download system log file", action: "Logs exported!",
+      label: "Export Logs", sub: "Download system log file", key: "exportLogs",
     },
     {
       icon: (
-
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2V12" stroke="#ff4655" strokeWidth="2" strokeLinecap="round" />
           <path d="M6.34 5.64A8 8 0 1 0 17.66 5.64" stroke="#ff4655" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       ),
-      label: "Maintenance Mode", sub: "Toggle maintenance screen", action: "Maintenance mode toggled.",
+      label: "Maintenance Mode", sub: "Toggle maintenance screen", key: "maintenanceMode",
     },
     {
       icon: (
-
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 4v6h6" stroke="#00d4ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M20 20v-6h-6" stroke="#00d4ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M4.93 15A9 9 0 0 0 19.07 9M4.93 15l-3 3M19.07 9l3-3" stroke="#00d4ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
-      label: "Restart Services", sub: "Restart background services", action: "Services restarting...",
+      label: "Restart Services", sub: "Restart background services", key: "restartServices",
     },
   ];
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-      {tools.map((t) => (
-        <button
-          key={t.label}
-          onClick={() => alert(t.action)}
-          className="dash-card p-5 text-left transition-all"
-          style={{ borderColor: t.label === "Maintenance Mode" ? "rgba(255,70,85,0.25)" : "var(--c-border)" }}
-        >
-          <div className="mb-3">{t.icon}</div>
-          <div className="font-semibold text-sm mb-1" style={{ color: t.label === "Maintenance Mode" ? "var(--c-accent)" : "var(--c-text)" }}>{t.label}</div>
-          <div className="text-xs" style={{ color: "var(--c-text-dim)" }}>{t.sub}</div>
-        </button>
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {tools.map((t) => (
+          <button
+            key={t.label}
+            onClick={() => setActiveModal(t.key)}
+            className="dash-card p-5 text-left transition-all"
+            style={{ borderColor: t.label === "Maintenance Mode" ? "rgba(255,70,85,0.25)" : "var(--c-border)" }}
+          >
+            <div className="mb-3">{t.icon}</div>
+            <div className="font-semibold text-sm mb-1" style={{ color: t.label === "Maintenance Mode" ? "var(--c-accent)" : "var(--c-text)" }}>{t.label}</div>
+            <div className="text-xs" style={{ color: "var(--c-text-dim)" }}>{t.sub}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Maintenance Modals */}
+      {activeModal === "clearCache" && <ClearCacheModal onClose={() => setActiveModal(null)} />}
+      {activeModal === "backup" && <BackupModal onClose={() => setActiveModal(null)} />}
+      {activeModal === "healthCheck" && <HealthCheckModal onClose={() => setActiveModal(null)} />}
+      {activeModal === "exportLogs" && <ExportLogsModal onClose={() => setActiveModal(null)} />}
+      {activeModal === "maintenanceMode" && <MaintenanceModeModal onClose={() => setActiveModal(null)} />}
+      {activeModal === "restartServices" && <RestartServicesModal onClose={() => setActiveModal(null)} />}
+    </>
   );
 }
 
@@ -276,7 +342,7 @@ export default function DeveloperDashboard() {
     switch (section) {
       case "logs": return <SystemLogsSection />;
       case "errors": return <ErrorReportsSection />;
-      case "metadata": return <UserManagementModule />;
+      case "metadata": return <UserManagementModule context="developer" />;
       case "roles": return <RoleManagementSection />;
       case "maintenance": return <MaintenanceSection />;
       case "crm": return <CrmSection />;
@@ -287,18 +353,20 @@ export default function DeveloperDashboard() {
   return (
     <div className="flex">
       <Sidebar role="developer" activeSection={section} onSectionChange={setSection} />
-      <main
-        className="flex-1"
-        style={{
-          minHeight: "calc(100vh - 60px)",
-          overflowY: "auto",
-          padding: "32px",
-          backgroundColor: "var(--c-page-bg)",
-        }}
-      >
-        <PageHeader title={meta.title} subtitle={meta.subtitle} />
-        {renderSection()}
-      </main>
+      <div className="flex-1 flex flex-col min-h-screen">
+        <DashboardHeader role="developer" />
+        <main
+          className="flex-1"
+          style={{
+            overflowY: "auto",
+            padding: "32px",
+            backgroundColor: "var(--c-page-bg)",
+          }}
+        >
+          <PageHeader title={meta.title} subtitle={meta.subtitle} />
+          {renderSection()}
+        </main>
+      </div>
     </div>
   );
 }

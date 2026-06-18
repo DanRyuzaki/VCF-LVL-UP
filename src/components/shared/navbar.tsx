@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
-
+import { useState, useRef, useEffect } from "react";
+import AccessibilityPopover from "./accessibility-popover";
 
 function MoonIcon() {
   return (
@@ -51,6 +52,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
 
+
   const isDashboard =
     pathname.startsWith("/gamer") ||
     pathname.startsWith("/organizer") ||
@@ -73,7 +75,7 @@ export default function Navbar() {
         { }
         <Link href="/" className="flex items-center gap-2">
           <span className="font-head text-xl font-bold tracking-widest uppercase">
-            <span style={{ color: isDark ? "#FFFFFF" : "#000000" }}>VCF: </span>
+            <span style={{ color: "var(--c-text)" }}>VCF: </span>
             <span style={{ color: "var(--c-accent)" }}>LVL UP!</span>
           </span>
         </Link>
@@ -130,8 +132,10 @@ export default function Navbar() {
             onClick={toggleTheme}
             title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            className="flex items-center justify-center w-9 h-9 rounded-lg border transition-all duration-200 hover:scale-110 active:scale-95"
+            className="flex items-center justify-center rounded-lg border transition-all duration-200 hover:scale-110 active:scale-95"
             style={{
+              width: "36px",
+              height: "36px",
               backgroundColor: isDark ? "#1A1A1A" : "#F0F0F2",
               borderColor: isDark ? "#2E2E2E" : "#D4D4D8",
               color: isDark ? "#FFD700" : "#F59E0B",
@@ -139,6 +143,8 @@ export default function Navbar() {
           >
             {isDark ? <MoonIcon /> : <SunIcon />}
           </button>
+
+          <AccessibilityPopover />
         </div>
       </div>
     </nav>

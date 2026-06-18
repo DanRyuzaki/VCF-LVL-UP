@@ -59,6 +59,37 @@
   --c-scrollbar-thumb-hover: #A0A0A8;
 }
 
+/* ─── HIGH CONTRAST OVERRIDES ─── */
+[data-contrast="high"] {
+  --brand-border: #FFFFFF !important;
+  --c-page-bg:    #000000 !important;
+  --c-surface:    #000000 !important;
+  --c-surface2:   #0D0D0D !important;
+  --c-surface3:   #1A1A1A !important;
+  --c-border:     #FFFFFF !important;
+  --c-border2:    #FFFFFF !important;
+  --c-text:       #FFFFFF !important;
+  --c-text-muted: #FFFFFF !important;
+  --c-text-dim:   #E0E0E0 !important;
+  --c-accent:     #FF3344 !important;
+  --c-accent-hover: #FF5566 !important;
+}
+
+[data-theme="light"][data-contrast="high"] {
+  --brand-border: #000000 !important;
+  --c-page-bg:    #FFFFFF !important;
+  --c-surface:    #FFFFFF !important;
+  --c-surface2:   #F0F0F0 !important;
+  --c-surface3:   #E5E5E5 !important;
+  --c-border:     #000000 !important;
+  --c-border2:    #000000 !important;
+  --c-text:       #000000 !important;
+  --c-text-muted: #000000 !important;
+  --c-text-dim:   #222222 !important;
+  --c-accent:     #D00010 !important;
+  --c-accent-hover: #A0000B !important;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -126,7 +157,7 @@ html, body {
 
 .dash-th {
   color: var(--c-text-dim);
-  font-size: 10px;
+  font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   padding: 12px 16px;
@@ -145,19 +176,19 @@ html, body {
 .dash-td {
   padding: 12px 16px;
   color: var(--c-text);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .dash-td-dim {
   padding: 12px 16px;
   color: var(--c-text-dim);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .dash-td-muted {
   padding: 12px 16px;
   color: var(--c-text-muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .dash-input {
@@ -165,7 +196,7 @@ html, body {
   border: 1px solid var(--c-border);
   border-radius: 8px;
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--c-text);
   outline: none;
   width: 100%;
@@ -185,7 +216,7 @@ html, body {
   border: 1px solid var(--c-border);
   border-radius: 8px;
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--c-text);
   outline: none;
   width: 100%;
@@ -198,7 +229,7 @@ html, body {
 
 .dash-label {
   display: block;
-  font-size: 10px;
+  font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: var(--c-text-dim);
@@ -206,7 +237,7 @@ html, body {
 }
 
 .dash-section-title {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -234,7 +265,7 @@ html, body {
 .dash-btn-ghost {
   border: 1px solid var(--c-border);
   color: var(--c-text-dim);
-  font-size: 12px;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   padding: 6px 12px;
@@ -250,7 +281,7 @@ html, body {
 }
 
 .dash-filter-btn {
-  font-size: 12px;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   padding: 6px 12px;
@@ -279,4 +310,36 @@ html, body {
   padding: 32px;
   overflow-y: auto;
 }
+
+/* Custom styling for font size slider */
+.font-size-slider {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.font-size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.font-size-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+.font-size-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  cursor: pointer;
+  border: none;
+  transition: transform 0.1s ease;
+}
+.font-size-slider::-moz-range-thumb:hover {
+  transform: scale(1.25);
+}
+
 

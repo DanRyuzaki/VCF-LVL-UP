@@ -38,7 +38,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
         }}
       >
         {/* ── NAV: flex-1 pushes profile to bottom ── */}
-        <div style={{ flex: 1, overflowY: "auto", paddingBottom: "8px" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", paddingBottom: "8px" }}>
 
           {/* ── BRANDED SIDEBAR HEADER ── */}
           <div
@@ -196,6 +196,46 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
               );
             })}
           </nav>
+
+          {role === "admin" && (
+            <div style={{ marginTop: "auto", paddingTop: "8px", paddingBottom: "4px" }}>
+              <button
+                onClick={() => onSectionChange("deleted-reports")}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "9px 20px",
+                  fontSize: "13px",
+                  fontFamily: "'Inter', 'Rajdhani', sans-serif",
+                  fontWeight: activeSection === "deleted-reports" ? 700 : 500,
+                  textAlign: "left",
+                  borderLeft: `2px solid ${activeSection === "deleted-reports" ? "var(--c-accent)" : "transparent"}`,
+                  color: activeSection === "deleted-reports" ? "var(--c-accent)" : "var(--c-text-muted)",
+                  backgroundColor: activeSection === "deleted-reports" ? "rgba(255,70,85,0.06)" : "transparent",
+                  transition: "all 0.15s ease",
+                  cursor: "pointer",
+                  letterSpacing: "0.03em",
+                }}
+                onMouseEnter={(e) => {
+                  if (activeSection !== "deleted-reports") {
+                    (e.currentTarget as HTMLElement).style.color = "var(--c-text)";
+                    (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(128,128,128,0.05)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeSection !== "deleted-reports") {
+                    (e.currentTarget as HTMLElement).style.color = "var(--c-text-muted)";
+                    (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+                  }
+                }}
+              >
+                <DynamicIcon name="report" size={15} />
+                <span>Deleted Reports</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── PROFILE: anchored at bottom by flex layout ── */}

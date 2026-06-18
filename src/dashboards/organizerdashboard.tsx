@@ -4,6 +4,7 @@ import Sidebar from "@/components/shared/sidebar";
 import StatCard from "@/components/shared/stat-card";
 import PageHeader from "@/components/shared/page-header";
 import { IconPlus, IconEdit, IconX, IconSearch, IconCheck } from "@/components/shared/icons";
+import BracketManagementModule from "@/modules/bracket-management";
 
 interface Team {
   id: string;
@@ -1117,95 +1118,13 @@ export default function OrganizerDashboard() {
         );
 
       case "brackets":
-        const bracketRounds = [
-          {
-            title: "Quarterfinals",
-            matches: [
-              { id: "qf1", teamA: { name: matchesState[0].teamA, score: matchesState[0].scoreA, isWinner: matchesState[0].winner === matchesState[0].teamA }, teamB: { name: matchesState[0].teamB, score: matchesState[0].scoreB, isWinner: matchesState[0].winner === matchesState[0].teamB } },
-              { id: "qf2", teamA: { name: matchesState[1].teamA, score: matchesState[1].scoreA, isWinner: matchesState[1].winner === matchesState[1].teamA }, teamB: { name: matchesState[1].teamB, score: matchesState[1].scoreB, isWinner: matchesState[1].winner === matchesState[1].teamB } },
-              { id: "qf3", teamA: { name: matchesState[2].teamA, score: matchesState[2].status === "completed" ? matchesState[2].scoreA : undefined, isWinner: matchesState[2].winner === matchesState[2].teamA }, teamB: { name: matchesState[2].teamB, score: matchesState[2].status === "completed" ? matchesState[2].scoreB : undefined, isWinner: matchesState[2].winner === matchesState[2].teamB } },
-              { id: "qf4", teamA: { name: matchesState[3].teamA, score: matchesState[3].status === "completed" ? matchesState[3].scoreA : undefined, isWinner: matchesState[3].winner === matchesState[3].teamA }, teamB: { name: matchesState[3].teamB, score: matchesState[3].status === "completed" ? matchesState[3].scoreB : undefined, isWinner: matchesState[3].winner === matchesState[3].teamB } },
-            ],
-          },
-          {
-            title: "Semifinals",
-            matches: [
-              { id: "sf1", teamA: { name: matchesState[4].teamA, score: matchesState[4].status === "completed" ? matchesState[4].scoreA : undefined, isWinner: matchesState[4].winner === matchesState[4].teamA }, teamB: { name: matchesState[4].teamB, score: matchesState[4].status === "completed" ? matchesState[4].scoreB : undefined, isWinner: matchesState[4].winner === matchesState[4].teamB } },
-              { id: "sf2", teamA: { name: matchesState[5].teamA, score: matchesState[5].status === "completed" ? matchesState[5].scoreA : undefined, isWinner: matchesState[5].winner === matchesState[5].teamA }, teamB: { name: matchesState[5].teamB, score: matchesState[5].status === "completed" ? matchesState[5].scoreB : undefined, isWinner: matchesState[5].winner === matchesState[5].teamB } },
-            ],
-          },
-          {
-            title: "Finals",
-            matches: [
-              { id: "f1", teamA: { name: matchesState[6].teamA, score: matchesState[6].status === "completed" ? matchesState[6].scoreA : undefined, isWinner: matchesState[6].winner === matchesState[6].teamA }, teamB: { name: matchesState[6].teamB, score: matchesState[6].status === "completed" ? matchesState[6].scoreB : undefined, isWinner: matchesState[6].winner === matchesState[6].teamB } },
-            ],
-          },
-        ];
-
         return (
-          <div className="space-y-6">
-            <div className="flex gap-2">
-              <button className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors">
-                Generate Bracket
-              </button>
-            </div>
-
-            <div className="overflow-x-auto pb-4">
-              <div className="flex gap-8 items-start min-w-max">
-                {bracketRounds.map((round, roundIndex) => {
-                  const topOffset = roundIndex === 0 ? 0 : roundIndex === 1 ? 42 : 130;
-                  return (
-                    <div key={round.title} className="flex flex-col gap-0 min-w-[170px]">
-                      <div className="text-[10px] uppercase tracking-[1.5px] mb-3 text-center text-[var(--c-text-dim)]">
-                        {round.title}
-                      </div>
-                      <div
-                        className="flex flex-col"
-                        style={{ gap: roundIndex === 0 ? "16px" : roundIndex === 1 ? "88px" : "0" }}
-                      >
-                        {round.matches.map((match) => (
-                          <div
-                            key={match.id}
-                            style={{
-                              marginTop: roundIndex > 0 && match === round.matches[0] ? `${topOffset}px` : undefined,
-                            }}
-                          >
-                            <div className="rounded-lg overflow-hidden bg-[var(--c-surface3)] border border-[var(--c-border)]">
-                              <div
-                                className="flex items-center justify-between px-3 py-2 text-xs"
-                                style={{
-                                  color: match.teamA.isWinner ? "#00F5D4" : "var(--c-text-muted)",
-                                  backgroundColor: match.teamA.isWinner ? "rgba(0,245,212,0.05)" : "transparent",
-                                }}
-                              >
-                                <span className="font-medium">{match.teamA.name}</span>
-                                {match.teamA.score !== undefined && (
-                                  <span className="font-bold ml-2">{match.teamA.score}</span>
-                                )}
-                              </div>
-                              <div style={{ height: "1px", backgroundColor: "var(--c-border)" }} />
-                              <div
-                                className="flex items-center justify-between px-3 py-2 text-xs"
-                                style={{
-                                  color: match.teamB.isWinner ? "#00F5D4" : "var(--c-text-muted)",
-                                  backgroundColor: match.teamB.isWinner ? "rgba(0,245,212,0.05)" : "transparent",
-                                }}
-                              >
-                                <span className="font-medium">{match.teamB.name}</span>
-                                {match.teamB.score !== undefined && (
-                                  <span className="font-bold ml-2">{match.teamB.score}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <BracketManagementModule
+            tournaments={tournaments}
+            setTournaments={setTournaments}
+            matchesState={matchesState}
+            setMatchesState={setMatchesState}
+          />
         );
 
       case "results":

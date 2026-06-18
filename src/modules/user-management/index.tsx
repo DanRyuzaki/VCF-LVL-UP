@@ -1,8 +1,12 @@
 "use client";
 import { useState } from "react";
 import { IconSearch, IconPlus } from "@/components/shared/icons";
+import AddUserModal from "@/modules/user-management/add-user-modal";
+import AddAdminModal from "@/modules/user-management/add-admin-modal";
+import ViewUserModal from "@/modules/user-management/view-user-modal";
+import DeleteConfirmModal from "@/modules/user-management/delete-confirm-modal";
 
-const mockUsers = [
+const initialUsers = [
   { id: "usr_001", name: "Marco Reyes",    email: "marco@faith.com",  role: "Organizer", status: "active",   created: "May 1",  lastLogin: "Jun 12" },
   { id: "usr_002", name: "John Dela Cruz", email: "john@faith.com",   role: "Gamer",     status: "active",   created: "May 3",  lastLogin: "Jun 11" },
   { id: "usr_003", name: "Ana Santos",     email: "ana@faith.com",    role: "Admin",     status: "active",   created: "Apr 20", lastLogin: "Jun 12" },
@@ -16,13 +20,52 @@ const roleBadge = (role: string) => {
   return "bg-[#00F5D4]/15 text-[#00F5D4]";
 };
 
-export default function UserManagementModule() {
+interface Props {
+  context?: "admin" | "developer";
+}
+
+export default function UserManagementModule({ context = "admin" }: Props) {
+  const isDev = context === "developer";
   const [search, setSearch] = useState("");
-  const filtered = mockUsers.filter(
+  const [users, setUsers] = useState(initialUsers);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [viewUser, setViewUser] = useState<(typeof initialUsers)[0] | null>(null);
+  const [deleteUser, setDeleteUser] = useState<(typeof initialUsers)[0] | null>(null);
+
+  const filtered = users.filter(
     (u) =>
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleAddUser = (data: Record<string, string>) => {
+    const newId = `usr_${String(users.length + 1).padStart(3, "0")}`;
+    const mi = data.middleInitial ? ` ${data.middleInitial}.` : "";
+    setUsers((prev) => [
+      ...prev,
+      {
+        id: newId,
+        name: `${data.firstName}${mi} ${data.lastName}`,
+        email: data.email,
+        role: data.role || "Admin",
+        status: data.status?.toLowerCase() || "active",
+        created: new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric" }),
+        lastLogin: "—",
+      },
+    ]);
+  };
+
+  const handleDeleteUser = () => {
+    if (!deleteUser) return;
+    setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id));
+    setDeleteUser(null);
+    setViewUser(null);
+  };
+
+  /* Table headers differ based on context */
+  const headers = isDev
+    ? ["UID", "Name", "Email", "Role", "Status", "Created", "Last Login", "Actions"]
+    : ["Name", "Email", "Role", "Status", "Created", "Last Login", "Actions"];
 
   return (
     <div>
@@ -50,15 +93,18 @@ export default function UserManagementModule() {
             onBlur={(e) => (e.currentTarget.style.borderColor = "var(--c-border)")}
           />
         </div>
-        <button className="flex items-center gap-2 bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors">
-          <IconPlus size={13} /> Add User
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
+        >
+          <IconPlus size={13} /> {isDev ? "Add Admin" : "Add User"}
         </button>
       </div>
       <div className="dash-table-wrap">
         <table className="w-full border-collapse">
           <thead className="dash-thead">
             <tr>
-              {["UID","Name","Email","Role","Status","Created","Last Login","Actions"].map((h) => (
+              {headers.map((h) => (
                 <th key={h} className="dash-th">{h}</th>
               ))}
             </tr>
@@ -66,25 +112,56 @@ export default function UserManagementModule() {
           <tbody>
             {filtered.map((u) => (
               <tr key={u.id} className="dash-tr">
-                <td className="dash-td-dim font-mono">{u.id}</td>
+                {isDev && <td className="dash-td-dim font-mono">{u.id}</td>}
                 <td className="dash-td font-medium">{u.name}</td>
                 <td className="dash-td-muted">{u.email}</td>
                 <td className="dash-td">
                   <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${roleBadge(u.role)}`}>{u.role}</span>
                 </td>
                 <td className="dash-td">
-                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${u.status === "active" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : ""}`} style={u.status !== "active" ? { backgroundColor: "var(--c-surface3)", color: "var(--c-text-dim)" } : {}}>{u.status}</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${u.status === "active" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : u.status === "suspended" ? "bg-[#FF4655]/15 text-[#FF4655]" : ""}`} style={u.status !== "active" && u.status !== "suspended" ? { backgroundColor: "var(--c-surface3)", color: "var(--c-text-dim)" } : {}}>{u.status}</span>
                 </td>
                 <td className="dash-td-dim">{u.created}</td>
                 <td className="dash-td-dim">{u.lastLogin}</td>
                 <td className="dash-td">
-                  <button className="dash-btn-ghost text-xs px-3 py-1 rounded">View</button>
+                  <button
+                    onClick={() => setViewUser(u)}
+                    className="dash-btn-ghost text-xs px-3 py-1 rounded"
+                  >
+                    View
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Add User / Add Admin Modal */}
+      {showAddModal && (
+        isDev
+          ? <AddAdminModal onClose={() => setShowAddModal(false)} onSave={handleAddUser} />
+          : <AddUserModal onClose={() => setShowAddModal(false)} onSave={handleAddUser} />
+      )}
+
+      {/* View User Modal */}
+      {viewUser && !deleteUser && (
+        <ViewUserModal
+          user={viewUser}
+          context={context}
+          onClose={() => setViewUser(null)}
+          onDelete={() => setDeleteUser(viewUser)}
+        />
+      )}
+
+      {/* Delete Confirmation */}
+      {deleteUser && (
+        <DeleteConfirmModal
+          userName={deleteUser.name}
+          onClose={() => setDeleteUser(null)}
+          onConfirm={handleDeleteUser}
+        />
+      )}
     </div>
   );
 }

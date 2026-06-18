@@ -27,6 +27,7 @@
   --c-text-dim:   #808080;
   --c-accent:     #FF4655;
   --c-accent-hover: #E53E4D;
+  --c-accent-text: #FFFFFF;
   --c-scrollbar-track: #121212;
   --c-scrollbar-thumb: #2E2E2E;
   --c-scrollbar-thumb-hover: #3E3E3E;
@@ -54,6 +55,7 @@
   --c-text-dim:   #6B6B6B;
   --c-accent:     #E03040;
   --c-accent-hover: #C02030;
+  --c-accent-text: #FFFFFF;
   --c-scrollbar-track: #FFFFFF;
   --c-scrollbar-thumb: #D4D4D8;
   --c-scrollbar-thumb-hover: #A0A0A8;
@@ -123,6 +125,7 @@ html, body {
   .text-muted   { color: var(--c-text-muted); }
   .text-dim     { color: var(--c-text-dim); }
   .text-accent  { color: var(--c-accent); }
+  .text-on-accent { color: var(--c-accent-text); }
   .bg-accent    { background-color: var(--c-accent); }
   .hover-accent:hover { background-color: var(--c-accent-hover); }
 }

@@ -88,7 +88,7 @@ export default function MaintenanceModule() {
     "Run";
 
   const statusClass = (s: ActionStatus, danger: boolean) => {
-    if (s === "running") return "bg-white/10 text-white/50 cursor-not-allowed";
+    if (s === "running") return "bg-black/10 dark:bg-white/10 text-black/50 dark:text-white/50 cursor-not-allowed";
     if (s === "done")    return "bg-emerald-600 text-white";
     if (s === "error")   return "bg-red-600 text-white";
     return danger
@@ -100,18 +100,18 @@ export default function MaintenanceModule() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-white text-xl font-bold">Maintenance</h2>
-        <p className="text-white/40 text-sm mt-0.5">
+        <h2 className="text-xl font-bold" style={{ color: "var(--c-text)" }}>Maintenance</h2>
+        <p className="text-sm mt-0.5" style={{ color: "var(--c-text-dim)" }}>
           System-level operations — developer access only
         </p>
       </div>
 
       {/* Warning banner */}
       <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 flex gap-3 items-start">
-        <span className="text-amber-400 text-lg mt-0.5">⚠</span>
+        <span className="text-amber-600 dark:text-amber-400 text-lg mt-0.5">⚠</span>
         <div>
-          <p className="text-amber-300 text-sm font-medium">Handle with care</p>
-          <p className="text-amber-300/60 text-xs mt-0.5">
+          <p className="text-amber-700 dark:text-amber-300 text-sm font-medium">Handle with care</p>
+          <p className="text-amber-700/60 dark:text-amber-300/60 text-xs mt-0.5">
             Dangerous actions are marked in red. They affect all users immediately and cannot be undone.
           </p>
         </div>
@@ -126,20 +126,21 @@ export default function MaintenanceModule() {
           return (
             <div
               key={action.id}
-              className={`bg-white/5 border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 ${
-                action.danger ? "border-red-500/20" : "border-white/10"
+              className={`border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 ${
+                action.danger ? "border-red-500/20" : "border-black/10 dark:border-white/10"
               }`}
+              style={{ backgroundColor: "var(--c-surface2)" }}
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-white text-sm font-medium">{action.label}</p>
+                  <p className="text-sm font-medium" style={{ color: "var(--c-text)" }}>{action.label}</p>
                   {action.danger && (
                     <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-medium">
                       DANGER
                     </span>
                   )}
                 </div>
-                <p className="text-white/40 text-xs mt-0.5">{action.description}</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--c-text-dim)" }}>{action.description}</p>
               </div>
 
               <div className="shrink-0 flex gap-2">
@@ -147,7 +148,8 @@ export default function MaintenanceModule() {
                   <>
                     <button
                       onClick={() => setConfirmId(null)}
-                      className="px-3 py-1.5 text-xs text-white/50 hover:text-white border border-white/10 rounded-lg transition"
+                      className="px-3 py-1.5 text-xs rounded-lg transition"
+                      style={{ color: "var(--c-text-dim)", border: "1px solid var(--c-border)" }}
                     >
                       Cancel
                     </button>
@@ -178,9 +180,9 @@ export default function MaintenanceModule() {
       </div>
 
       {/* Footer note */}
-      <p className="text-white/20 text-[11px]">
+      <p className="text-[11px]" style={{ color: "var(--c-text-dim)", opacity: 0.5 }}>
         Actions are currently UI stubs. Connect each to a Cloud Function endpoint
-        at <code className="text-white/30">/api/maintenance/{"<action-id>"}</code> to enable real execution.
+        at <code style={{ color: "var(--c-text-dim)", opacity: 0.7 }}>/api/maintenance/{"<action-id>"}</code> to enable real execution.
       </p>
     </div>
   );

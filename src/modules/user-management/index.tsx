@@ -376,14 +376,14 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
       </div>
 
       {/* Filter / Search / Sort bar */}
-      <div className="flex flex-wrap items-center gap-4 mb-5 p-3.5 rounded-lg" style={{ border: "1px solid rgba(255, 255, 255, 0.08)", backgroundColor: "rgba(20, 20, 20, 0.6)", backdropFilter: "blur(10px)" }}>
+      <div className="flex flex-wrap items-center gap-4 mb-5 p-3.5 rounded-lg" style={{ border: "1px solid var(--c-border)", backgroundColor: "var(--c-surface2)", backdropFilter: "blur(10px)" }}>
         {/* Filter by */}
         <div className="flex items-center gap-2.5">
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", lineHeight: "1.1", color: "var(--c-text-dim)", fontSize: "10px", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}>
             <span>Filter</span><span>By:</span>
           </div>
           <select value={filterBy} onChange={(e) => { setFilterBy(e.target.value); setSearch(""); }} className="dash-select"
-            style={{ padding: "0 32px 0 12px", backgroundColor: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", color: "var(--c-text)", fontSize: "13px", outline: "none", cursor: "pointer", height: "38px", minWidth: "130px", appearance: "none", backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
+            style={{ padding: "0 32px 0 12px", backgroundColor: "var(--c-surface3)", border: "1px solid var(--c-border)", borderRadius: "6px", color: "var(--c-text)", fontSize: "13px", outline: "none", cursor: "pointer", height: "38px", minWidth: "130px", appearance: "none", backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23808080' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
             <option value="Name">Name</option>
             <option value="Email Address">Email Address</option>
             <option value="Role">Role</option>
@@ -396,9 +396,9 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
           <div className="relative">
             <IconSearch size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--c-text-dim)" }} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search ${filterBy.toLowerCase()}...`}
-              style={{ paddingLeft: "36px", paddingRight: "12px", height: "38px", width: "220px", fontSize: "13px", backgroundColor: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", color: "var(--c-text)", outline: "none" }}
+              style={{ paddingLeft: "36px", paddingRight: "12px", height: "38px", width: "220px", fontSize: "13px", backgroundColor: "var(--c-surface3)", border: "1px solid var(--c-border)", borderRadius: "6px", color: "var(--c-text)", outline: "none" }}
               onFocus={(e) => (e.currentTarget.style.borderColor = "var(--c-accent)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")} />
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--c-border)")} />
           </div>
         </div>
 
@@ -408,7 +408,7 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
             <span>Sort</span><span>By:</span>
           </div>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="dash-select"
-            style={{ padding: "0 32px 0 12px", backgroundColor: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", color: "var(--c-text)", fontSize: "13px", outline: "none", cursor: "pointer", height: "38px", minWidth: "160px", appearance: "none", backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
+            style={{ padding: "0 32px 0 12px", backgroundColor: "var(--c-surface3)", border: "1px solid var(--c-border)", borderRadius: "6px", color: "var(--c-text)", fontSize: "13px", outline: "none", cursor: "pointer", height: "38px", minWidth: "160px", appearance: "none", backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23808080' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
             <option value="name_asc">Name (A–Z)</option>
             <option value="name_desc">Name (Z–A)</option>
             <option value="created_newest">Date Created (Newest)</option>

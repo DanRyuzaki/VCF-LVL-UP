@@ -842,9 +842,9 @@ function ArchivedSectionInner() {
               gap: "24px",
               marginTop: "12px",
               paddingBottom: "18px",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+              borderBottom: "1px solid var(--c-border)",
               fontSize: "13px",
-              color: "#E2E8F0",
+              color: "var(--c-text)",
               fontFamily: "'Inter', sans-serif",
             }}
           >
@@ -861,15 +861,15 @@ function ArchivedSectionInner() {
                   Admin Information
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "#94A3B8" }}>Admin Name</span><span>: {selectedReport.adminName}</span></div>
-                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "#94A3B8" }}>Role</span><span>: {selectedReport.adminRole}</span></div>
-                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "#94A3B8" }}>Email</span><span>: {selectedReport.adminEmail}</span></div>
-                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "#94A3B8" }}>Account ID</span><span>: {selectedReport.adminAccountId}</span></div>
+                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "var(--c-text-dim)" }}>Admin Name</span><span>: {selectedReport.adminName}</span></div>
+                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "var(--c-text-dim)" }}>Role</span><span>: {selectedReport.adminRole}</span></div>
+                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "var(--c-text-dim)" }}>Email</span><span>: {selectedReport.adminEmail}</span></div>
+                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "var(--c-text-dim)" }}>Account ID</span><span>: {selectedReport.adminAccountId}</span></div>
                 </div>
               </div>
 
               {/* Divider */}
-              <div style={{ height: "1px", backgroundColor: "rgba(255, 255, 255, 0.05)" }} />
+              <div style={{ height: "1px", backgroundColor: "var(--c-border)" }} />
 
               {/* Deletion Information */}
               <div>
@@ -884,15 +884,15 @@ function ArchivedSectionInner() {
                   Deletion Information
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "#94A3B8" }}>Date Deleted</span><span>: {selectedReport.dateDeleted}</span></div>
-                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "#94A3B8" }}>Time Deleted</span><span>: {selectedReport.timeDeleted}</span></div>
-                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "#94A3B8" }}>Deleted By</span><span>: {selectedReport.deletedBy}</span></div>
+                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "var(--c-text-dim)" }}>Date Deleted</span><span>: {selectedReport.dateDeleted}</span></div>
+                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "var(--c-text-dim)" }}>Time Deleted</span><span>: {selectedReport.timeDeleted}</span></div>
+                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "var(--c-text-dim)" }}>Deleted By</span><span>: {selectedReport.deletedBy}</span></div>
                 </div>
               </div>
             </div>
 
             {/* COLUMN 2: Deleted Record Info + Reason for Deletion */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px", borderLeft: "1px solid rgba(255, 255, 255, 0.08)", paddingLeft: "24px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px", borderLeft: "1px solid var(--c-border)", paddingLeft: "24px" }}>
               {/* Deleted Record Information */}
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#FF4655", fontWeight: "bold", fontSize: "14px", textTransform: "uppercase", marginBottom: "12px" }}>
@@ -906,22 +906,22 @@ function ArchivedSectionInner() {
                   Deleted Record Information
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "#94A3B8" }}>Deleted Item</span><span>: {selectedReport.deletedItemName}</span></div>
+                  <div style={{ display: "flex" }}><span style={{ width: "110px", color: "var(--c-text-dim)" }}>Deleted Item</span><span>: {selectedReport.deletedItemName}</span></div>
                   <div style={{ display: "flex" }}>
-                    <span style={{ width: "110px", color: "#94A3B8" }}>Item Type</span>
+                    <span style={{ width: "110px", color: "var(--c-text-dim)" }}>Item Type</span>
                     <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                       : {renderItemTypeIcon(selectedReport.itemType)} {selectedReport.itemType}
                     </span>
                   </div>
                   <div style={{ display: "flex" }}>
-                    <span style={{ width: "110px", color: "#94A3B8" }}>Record ID</span>
+                    <span style={{ width: "110px", color: "var(--c-text-dim)" }}>Record ID</span>
                     <span>: {selectedReport.deletedUsers && selectedReport.deletedUsers.length > 0 ? selectedReport.deletedUsers[0].id : "N/A"}</span>
                   </div>
                 </div>
               </div>
 
               {/* Divider */}
-              <div style={{ height: "1px", backgroundColor: "rgba(255, 255, 255, 0.05)" }} />
+              <div style={{ height: "1px", backgroundColor: "var(--c-border)" }} />
 
               {/* Reason for Deletion */}
               <div>
@@ -934,11 +934,11 @@ function ArchivedSectionInner() {
                 </div>
                 <div
                   style={{
-                    backgroundColor: "rgba(0, 0, 0, 0.25)",
-                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    backgroundColor: "var(--c-surface3)",
+                    border: "1px solid var(--c-border)",
                     borderRadius: "6px",
                     padding: "12px 14px",
-                    color: "#CBD5E1",
+                    color: "var(--c-text-muted)",
                     fontSize: "12.5px",
                     lineHeight: 1.5,
                   }}
@@ -949,7 +949,7 @@ function ArchivedSectionInner() {
             </div>
 
             {/* COLUMN 3: System Activity Log */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", borderLeft: "1px solid rgba(255, 255, 255, 0.08)", paddingLeft: "24px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", borderLeft: "1px solid var(--c-border)", paddingLeft: "24px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#FF4655", fontWeight: "bold", fontSize: "14px", textTransform: "uppercase" }}>
                 {/* Activity Log Icon */}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -959,15 +959,15 @@ function ArchivedSectionInner() {
               </div>
               <div
                 style={{
-                  backgroundColor: "rgba(0, 0, 0, 0.3)",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  backgroundColor: "var(--c-surface3)",
+                  border: "1px solid var(--c-border)",
                   borderRadius: "6px",
                   padding: "16px",
                   flex: 1,
                   fontFamily: "monospace",
                   fontSize: "12px",
                   lineHeight: 1.6,
-                  color: "#94A3B8",
+                  color: "var(--c-text-muted)",
                   overflowY: "auto",
                   maxHeight: "220px",
                 }}
@@ -975,7 +975,7 @@ function ArchivedSectionInner() {
                 <span style={{ color: "#FF4655", fontWeight: "bold" }}>
                   [{selectedReport.dateDeleted} {selectedReport.timeDeleted}]
                 </span>{" "}
-                <span style={{ color: "#E2E8F0" }}>
+                <span style={{ color: "var(--c-text)" }}>
                   Administrator {selectedReport.adminName} permanently deleted {selectedReport.itemType}{" "}
                   {selectedReport.deletedUsers && selectedReport.deletedUsers.length > 0 ? selectedReport.deletedUsers[0].id : "N/A"}{" "}
                   ({selectedReport.deletedItemName}).
@@ -1001,8 +1001,8 @@ function ArchivedSectionInner() {
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all cursor-pointer font-semibold uppercase tracking-wider text-xs"
               style={{
                 backgroundColor: "rgba(0, 245, 212, 0.05)",
-                border: "1.2px solid #00F5D4",
-                color: "#00F5D4",
+                border: "1.2px solid var(--brand-teal)",
+                color: "var(--brand-teal)",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = "rgba(0, 245, 212, 0.15)";
@@ -1027,17 +1027,17 @@ function ArchivedSectionInner() {
               onClick={triggerSystemPrint}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all cursor-pointer font-semibold uppercase tracking-wider text-xs"
               style={{
-                backgroundColor: "rgba(255, 255, 255, 0.03)",
-                border: "1.2px solid rgba(255, 255, 255, 0.2)",
-                color: "rgba(255, 255, 255, 0.8)",
+                backgroundColor: "var(--c-surface2)",
+                border: "1.2px solid var(--c-border)",
+                color: "var(--c-text-dim)",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.08)";
-                e.currentTarget.style.color = "#FFFFFF";
+                e.currentTarget.style.backgroundColor = "var(--c-surface3)";
+                e.currentTarget.style.color = "var(--c-text)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.03)";
-                e.currentTarget.style.color = "rgba(255, 255, 255, 0.8)";
+                e.currentTarget.style.backgroundColor = "var(--c-surface2)";
+                e.currentTarget.style.color = "var(--c-text-dim)";
               }}
             >
               {/* Printer SVG Icon */}

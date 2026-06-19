@@ -14,6 +14,7 @@ const CONSENT_KEY = "vcf_consent_session";
 
 function validateEmail(email: string): string {
   if (!email) return "Email address is required.";
+  if (/^[^a-zA-Z]/.test(email)) return "Email must start with a letter.";
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   if (!re.test(email)) return "Please enter a valid email address (e.g. you@domain.com).";
   return "";

@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef, useEffect, useCallback, CSSProperties } from "react";
+import { useState, useRef, useEffect, useCallback, useContext, CSSProperties } from "react";
+import { OrganizerContext } from "@/lib/organizer-context";
 
 /* ═══════════════════════════════════════════════════════
    Types
@@ -356,17 +357,17 @@ const propagateWinner = (
 
 export default function BracketManagementModule({
   showActions = true,
-  tournaments,
-  setTournaments,
-  matchesState,
-  setMatchesState,
 }: {
   showActions?: boolean;
-  tournaments?: any[];
-  setTournaments?: React.Dispatch<React.SetStateAction<any[]>>;
-  matchesState?: any[];
-  setMatchesState?: React.Dispatch<React.SetStateAction<any[]>>;
 }) {
+  // When showActions is true we're in organizer context — read shared state.
+  // When false (gamer view) the context may not be present; fall back gracefully.
+  const organizerCtx = useContext(OrganizerContext);
+  const tournaments    = showActions ? organizerCtx?.tournaments    : undefined;
+  const setTournaments = showActions ? organizerCtx?.setTournaments : undefined;
+  const matchesState   = showActions ? organizerCtx?.matchesState   : undefined;
+  const setMatchesState = showActions ? organizerCtx?.setMatchesState : undefined;
+
   const getFormattedBrackets = useCallback((): TournamentBracketData[] => {
     if (tournaments && matchesState) {
       return tournaments.map((t) => {

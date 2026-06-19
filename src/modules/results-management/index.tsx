@@ -1,180 +1,105 @@
 "use client";
+
 import { useState, useMemo } from "react";
+import { useOrganizerContext } from "@/lib/organizer-context";
 
-interface Match {
-  id: string;
-  round: string;
-  teamA: string;
-  teamB: string;
-  winner: string;
-  scoreA: number;
-  scoreB: number;
-  date: string;
-  time: string;
-  status: string;
-}
+export default function ResultsManagementModule() {
+  const { matchesState, setMatchesState, tournaments, setTournaments } =
+    useOrganizerContext();
 
-interface Tournament {
-  id: string;
-  name: string;
-  game: string;
-  format: string;
-  season: number;
-  teamsRegistered: number;
-  maxTeams: number;
-  matchesPlayed: number;
-  totalMatches: number;
-  status: string;
-  teamsList: { name: string; players: number }[];
-  matchesList: string[];
-}
+  // ── Local UI state ────────────────────────────────────────────────────────
+  const [notification,    setNotification]    = useState<{ message: string; sub: string } | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState("qf3");
+  const [matchWinner,     setMatchWinner]     = useState("Team Apex");
+  const [scoreA,          setScoreA]          = useState(2);
+  const [scoreB,          setScoreB]          = useState(0);
 
-interface ResultsManagementModuleProps {
-  // Data and setters
-  matchesState: Match[];
-  setMatchesState: React.Dispatch<React.SetStateAction<Match[]>>;
-  tournaments: Tournament[];
-  setTournaments: React.Dispatch<React.SetStateAction<Tournament[]>>;
+  // ── Derived data ──────────────────────────────────────────────────────────
 
-  // UI state
-  selectedMatchId: string;
-  setSelectedMatchId: React.Dispatch<React.SetStateAction<string>>;
-  matchWinner: string;
-  setMatchWinner: React.Dispatch<React.SetStateAction<string>>;
-  scoreA: number;
-  setScoreA: React.Dispatch<React.SetStateAction<number>>;
-  scoreB: number;
-  setScoreB: React.Dispatch<React.SetStateAction<number>>;
+  const pendingMatches = useMemo(
+    () => matchesState.filter((m) => m.status === "pending" && m.teamA !== "TBD" && m.teamB !== "TBD"),
+    [matchesState]
+  );
 
-  // Notification state
-  resultsNotification: { message: string; sub: string } | null;
-  setResultsNotification: React.Dispatch<React.SetStateAction<{ message: string; sub: string } | null>>;
-}
+  const winnerOptions = useMemo(() => {
+    const match = matchesState.find((m) => m.id === selectedMatchId);
+    if (!match) return [];
+    return [
+      { value: match.teamA, label: match.teamA },
+      { value: match.teamB, label: match.teamB },
+    ];
+  }, [selectedMatchId, matchesState]);
 
-export default function ResultsManagementModule({
-  matchesState,
-  setMatchesState,
-  tournaments,
-  setTournaments,
+  // ── Submit handler ────────────────────────────────────────────────────────
 
-  selectedMatchId,
-  setSelectedMatchId,
-  matchWinner,
-  setMatchWinner,
-  scoreA,
-  setScoreA,
-  scoreB,
-  setScoreB,
-
-  resultsNotification,
-  setResultsNotification,
-}: ResultsManagementModuleProps) {
   const handleResultSubmit = () => {
     const selectedMatch = matchesState.find((m) => m.id === selectedMatchId);
     if (!selectedMatch) return;
 
-    const updated = matchesState.map((m) => {
-      if (m.id === selectedMatchId) {
-        return {
-          ...m,
-          winner: matchWinner,
-          scoreA: scoreA,
-          scoreB: scoreB,
-          status: "completed",
-        };
-      }
-      return m;
-    });
+    // Record the result
+    const updated = matchesState.map((m) =>
+      m.id === selectedMatchId
+        ? { ...m, winner: matchWinner, scoreA, scoreB, status: "completed" }
+        : m
+    );
 
-    let feederRoundWinner = matchWinner;
-    let nextMatchId = "";
-    let slotKey: "teamA" | "teamB" = "teamA";
-
-    if (selectedMatchId === "qf3") {
-      nextMatchId = "sf2";
-      slotKey = "teamA";
-    } else if (selectedMatchId === "qf4") {
-      nextMatchId = "sf2";
-      slotKey = "teamB";
-    } else if (selectedMatchId === "sf1") {
-      nextMatchId = "f1";
-      slotKey = "teamA";
-    } else if (selectedMatchId === "sf2") {
-      nextMatchId = "f1";
-      slotKey = "teamB";
-    }
-
-    const finalMatches = updated.map((m) => {
-      if (m.id === nextMatchId) {
-        return {
-          ...m,
-          [slotKey]: feederRoundWinner,
-        };
-      }
-      return m;
-    });
+    // Advance winner to the next bracket slot
+    const PROGRESSION: Record<string, { nextId: string; slot: "teamA" | "teamB" }> = {
+      qf3: { nextId: "sf2", slot: "teamA" },
+      qf4: { nextId: "sf2", slot: "teamB" },
+      sf1: { nextId: "f1",  slot: "teamA" },
+      sf2: { nextId: "f1",  slot: "teamB" },
+    };
+    const next = PROGRESSION[selectedMatchId];
+    const finalMatches = next
+      ? updated.map((m) =>
+          m.id === next.nextId ? { ...m, [next.slot]: matchWinner } : m
+        )
+      : updated;
 
     setMatchesState(finalMatches);
 
-    let alertMessage = "";
-    let nextOpponent = "";
-
+    // Build notification message
+    let message = "";
     if (selectedMatchId === "qf3" || selectedMatchId === "qf4") {
-      const companionMatchId = selectedMatchId === "qf3" ? "qf4" : "qf3";
-      const companionMatch = finalMatches.find((m) => m.id === companionMatchId);
-      if (companionMatch && companionMatch.status === "completed") {
-        nextOpponent = companionMatch.winner;
-        alertMessage = `Alert sent to ${feederRoundWinner} and ${nextOpponent} members: 'Your Semifinals match is scheduled. Prepare for battle!'`;
-      } else {
-        alertMessage = `Alert sent to ${feederRoundWinner}: 'Waiting for the winner of Quarterfinals Match to lock opponent.'`;
-      }
+      const siblingId = selectedMatchId === "qf3" ? "qf4" : "qf3";
+      const sibling   = finalMatches.find((m) => m.id === siblingId);
+      message =
+        sibling?.status === "completed"
+          ? `Alert sent to ${matchWinner} and ${sibling.winner} members: 'Your Semifinals match is scheduled. Prepare for battle!'`
+          : `Alert sent to ${matchWinner}: 'Waiting for the winner of Quarterfinals Match to lock opponent.'`;
     } else if (selectedMatchId === "sf1" || selectedMatchId === "sf2") {
-      const companionMatchId = selectedMatchId === "sf1" ? "sf2" : "sf1";
-      const companionMatch = finalMatches.find((m) => m.id === companionMatchId);
-      if (companionMatch && companionMatch.status === "completed") {
-        nextOpponent = companionMatch.winner;
-        alertMessage = `Alert sent to ${feederRoundWinner} and ${nextOpponent} members: 'Your Finals match is scheduled!'`;
-      } else {
-        alertMessage = `Alert sent to ${feederRoundWinner}: 'Waiting for the winner of Semifinals Match to lock final opponent.'`;
-      }
+      const siblingId = selectedMatchId === "sf1" ? "sf2" : "sf1";
+      const sibling   = finalMatches.find((m) => m.id === siblingId);
+      message =
+        sibling?.status === "completed"
+          ? `Alert sent to ${matchWinner} and ${sibling.winner} members: 'Your Finals match is scheduled!'`
+          : `Alert sent to ${matchWinner}: 'Waiting for the winner of Semifinals Match to lock final opponent.'`;
     } else {
-      alertMessage = `Alert sent: '${feederRoundWinner} is crowned champion of MLBB Season 4!'`;
+      message = `Alert sent: '${matchWinner} is crowned champion of MLBB Season 4!'`;
     }
 
-    setResultsNotification({
-      message: alertMessage,
-      sub: `Player stats synced: ${feederRoundWinner} players +25 Skill Rating. Win-Loss record and rankings updated on leaderboards.`,
+    setNotification({
+      message,
+      sub: `Player stats synced: ${matchWinner} players +25 Skill Rating. Win-Loss record and rankings updated on leaderboards.`,
     });
 
-    setTimeout(() => {
-      setResultsNotification(null);
-    }, 8000);
+    setTimeout(() => setNotification(null), 8000);
   };
 
-  // Memoize the filtered matches for performance
-  const pendingMatches = useMemo(() => {
-    return matchesState.filter((m) => m.status === "pending" && m.teamA !== "TBD" && m.teamB !== "TBD");
-  }, [matchesState]);
-
-  // Memoize the winner options based on selected match
-  const winnerOptions = useMemo(() => {
-    const selected = matchesState.find((m) => m.id === selectedMatchId);
-    if (!selected) return [];
-    return [
-      { value: selected.teamA, label: selected.teamA },
-      { value: selected.teamB, label: selected.teamB }
-    ];
-  }, [selectedMatchId, matchesState]);
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-5">
-      {resultsNotification && (
+      {/* Notification banner */}
+      {notification && (
         <div className="p-4 rounded-xl border border-[#00F5D4]/50 bg-[#00F5D4]/5 text-[#00F5D4] text-xs space-y-1 animate-fade-in">
-          <div className="font-bold uppercase tracking-wider">{resultsNotification.message}</div>
-          <div className="opacity-90">{resultsNotification.sub}</div>
+          <div className="font-bold uppercase tracking-wider">{notification.message}</div>
+          <div className="opacity-90">{notification.sub}</div>
         </div>
       )}
 
+      {/* Record result form */}
       <div className="dash-card p-5">
         <div className="dash-section-title">Record New Result</div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -184,10 +109,8 @@ export default function ResultsManagementModule({
               value={selectedMatchId}
               onChange={(e) => {
                 setSelectedMatchId(e.target.value);
-                const selected = matchesState.find((m) => m.id === e.target.value);
-                if (selected) {
-                  setMatchWinner(selected.teamA);
-                }
+                const match = matchesState.find((m) => m.id === e.target.value);
+                if (match) setMatchWinner(match.teamA);
               }}
               className="dash-select"
             >
@@ -206,10 +129,8 @@ export default function ResultsManagementModule({
               onChange={(e) => setMatchWinner(e.target.value)}
               className="dash-select"
             >
-              {winnerOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+              {winnerOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
@@ -244,6 +165,7 @@ export default function ResultsManagementModule({
         </div>
       </div>
 
+      {/* Match history table */}
       <div className="dash-table-wrap">
         <table className="w-full border-collapse">
           <thead className="dash-thead">
@@ -259,17 +181,22 @@ export default function ResultsManagementModule({
                 <td className="dash-td font-semibold">
                   {m.teamA} vs {m.teamB}
                 </td>
-                <td className="dash-td font-bold" style={{ color: m.winner ? "#00F5D4" : "var(--c-text-muted)" }}>
+                <td
+                  className="dash-td font-bold"
+                  style={{ color: m.winner ? "#00F5D4" : "var(--c-text-muted)" }}
+                >
                   {m.winner || "TBD"}
                 </td>
                 <td className="dash-td">
-                  {m.status === "completed" ? `${m.scoreA}-${m.scoreB}` : "-"}
+                  {m.status === "completed" ? `${m.scoreA}–${m.scoreB}` : "–"}
                 </td>
                 <td className="dash-td-muted">{m.round}</td>
                 <td className="dash-td">
                   <span
                     className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                      m.status === "completed" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : "bg-[#FF4655]/20 text-[#FF4655]"
+                      m.status === "completed"
+                        ? "bg-[#00F5D4]/15 text-[#00F5D4]"
+                        : "bg-[#FF4655]/20 text-[#FF4655]"
                     }`}
                   >
                     {m.status}

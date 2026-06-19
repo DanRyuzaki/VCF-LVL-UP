@@ -1,133 +1,110 @@
 "use client";
+
 import { useState } from "react";
-import { IconPlus, IconEdit, IconX } from "@/components/shared/icons";
+import { IconEdit, IconX } from "@/components/shared/icons";
+import { useOrganizerContext, type Tournament } from "@/lib/organizer-context";
 
-interface Tournament {
-  id: string;
-  name: string;
-  game: string;
-  format: string;
-  season: number;
-  teamsRegistered: number;
-  maxTeams: number;
-  matchesPlayed: number;
-  totalMatches: number;
-  status: string;
-  teamsList: { name: string; players: number }[];
-  matchesList: string[];
-}
+export default function TournamentManagementModule() {
+  const { tournaments, setTournaments } = useOrganizerContext();
 
-interface TournamentManagementModuleProps {
-  tournaments: Tournament[];
-  setTournaments: React.Dispatch<React.SetStateAction<Tournament[]>>;
-}
+  // ── Create-tournament form ────────────────────────────────────────────────
+  const [newName,     setNewName]     = useState("");
+  const [newGame,     setNewGame]     = useState("MLBB");
+  const [newFormat,   setNewFormat]   = useState("Single Elimination");
+  const [newMaxTeams, setNewMaxTeams] = useState(8);
 
-export default function TournamentManagementModule({
-  tournaments,
-  setTournaments,
-}: TournamentManagementModuleProps) {
-  // Form state
-  const [newTourneyName, setNewTourneyName] = useState("");
-  const [newTourneyGame, setNewTourneyGame] = useState("MLBB");
-  const [newTourneyFormat, setNewTourneyFormat] = useState("Single Elimination");
-  const [newTourneyMaxTeams, setNewTourneyMaxTeams] = useState(8);
+  // ── Modal ─────────────────────────────────────────────────────────────────
+  const [modalType,        setModalType]        = useState<"none" | "view" | "edit">("none");
+  const [selectedTourney,  setSelectedTourney]  = useState<Tournament | null>(null);
 
-  // Modal state
-  const [tourneyModalType, setTourneyModalType] = useState<"none" | "view" | "edit">("none");
-  const [selectedTourney, setSelectedTourney] = useState<Tournament | null>(null);
+  // ── Edit-modal fields ─────────────────────────────────────────────────────
+  const [editName,   setEditName]   = useState("");
+  const [editGame,   setEditGame]   = useState("");
+  const [editFormat, setEditFormat] = useState("");
+  const [editStatus, setEditStatus] = useState("");
 
-  // Edit modal state
-  const [editTourneyName, setEditTourneyName] = useState("");
-  const [editTourneyGame, setEditTourneyGame] = useState("");
-  const [editTourneyFormat, setEditTourneyFormat] = useState("");
-  const [editTourneyStatus, setEditTourneyStatus] = useState("");
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleCreateTournament = (e: React.FormEvent) => {
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTourneyName) return;
+    if (!newName.trim()) return;
 
-    const newT: Tournament = {
-      id: `tr-${Date.now()}`,
-      name: newTourneyName,
-      game: newTourneyGame,
-      format: newTourneyFormat,
-      season: 1,
-      teamsRegistered: 0,
-      maxTeams: newTourneyMaxTeams,
-      matchesPlayed: 0,
-      totalMatches: newTourneyMaxTeams - 1,
-      status: "registration",
-      teamsList: [],
-      matchesList: [],
-    };
-    setTournaments((prev) => [...prev, newT]);
-    setNewTourneyName("");
-    // Note: we keep game, format, and maxTeams as they were; optionally reset
+    setTournaments((prev) => [
+      ...prev,
+      {
+        id: `tr-${Date.now()}`,
+        name: newName.trim(),
+        game: newGame,
+        format: newFormat,
+        season: 1,
+        teamsRegistered: 0,
+        maxTeams: newMaxTeams,
+        matchesPlayed: 0,
+        totalMatches: newMaxTeams - 1,
+        status: "registration",
+        teamsList: [],
+        matchesList: [],
+      },
+    ]);
+
+    setNewName("");
   };
 
-  const openTourneyModal = (t: Tournament, type: "view" | "edit") => {
+  const openModal = (t: Tournament, type: "view" | "edit") => {
     setSelectedTourney(t);
-    setTourneyModalType(type);
+    setModalType(type);
     if (type === "edit") {
-      setEditTourneyName(t.name);
-      setEditTourneyGame(t.game);
-      setEditTourneyFormat(t.format);
-      setEditTourneyStatus(t.status);
+      setEditName(t.name);
+      setEditGame(t.game);
+      setEditFormat(t.format);
+      setEditStatus(t.status);
     }
   };
 
-  const handleSaveTourneyDetails = () => {
-    if (!selectedTourney) return;
-    setTournaments((prev) =>
-      prev.map((t) => {
-        if (t.id === selectedTourney.id) {
-          return {
-            ...t,
-            name: editTourneyName,
-            game: editTourneyGame,
-            format: editTourneyFormat,
-            status: editTourneyStatus,
-          };
-        }
-        return t;
-      })
-    );
-    setTourneyModalType("none");
+  const closeModal = () => {
+    setModalType("none");
     setSelectedTourney(null);
   };
 
+  const handleSave = () => {
+    if (!selectedTourney) return;
+    setTournaments((prev) =>
+      prev.map((t) =>
+        t.id === selectedTourney.id
+          ? { ...t, name: editName, game: editGame, format: editFormat, status: editStatus }
+          : t
+      )
+    );
+    closeModal();
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
+      {/* Create Form */}
       <div className="dash-card p-5">
         <div className="dash-section-title">Create Tournaments</div>
-        <form onSubmit={handleCreateTournament} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div>
             <label className="dash-label">Tournament Name</label>
             <input
-              value={newTourneyName}
-              onChange={(e) => setNewTourneyName(e.target.value)}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
               placeholder="e.g. MLBB Championship"
               className="dash-input"
             />
           </div>
           <div>
             <label className="dash-label">Game</label>
-            <select
-              value={newTourneyGame}
-              onChange={(e) => setNewTourneyGame(e.target.value)}
-              className="dash-select"
-            >
+            <select value={newGame} onChange={(e) => setNewGame(e.target.value)} className="dash-select">
               <option value="MLBB">MLBB</option>
               <option value="CODM">CODM</option>
             </select>
           </div>
           <div>
             <label className="dash-label">Format</label>
-            <select
-              value={newTourneyFormat}
-              onChange={(e) => setNewTourneyFormat(e.target.value)}
-              className="dash-select"
-            >
+            <select value={newFormat} onChange={(e) => setNewFormat(e.target.value)} className="dash-select">
               <option value="Single Elimination">Single Elimination</option>
               <option value="Double Elimination">Double Elimination</option>
               <option value="Round Robin">Round Robin</option>
@@ -136,8 +113,8 @@ export default function TournamentManagementModule({
           <div>
             <label className="dash-label">Max Teams</label>
             <select
-              value={newTourneyMaxTeams}
-              onChange={(e) => setNewTourneyMaxTeams(Number(e.target.value))}
+              value={newMaxTeams}
+              onChange={(e) => setNewMaxTeams(Number(e.target.value))}
               className="dash-select"
             >
               <option value="4">4 Teams</option>
@@ -154,6 +131,7 @@ export default function TournamentManagementModule({
         </form>
       </div>
 
+      {/* Tournaments Table */}
       <div className="dash-table-wrap">
         <table className="w-full border-collapse">
           <thead className="dash-thead">
@@ -167,7 +145,7 @@ export default function TournamentManagementModule({
             {tournaments.map((t) => (
               <tr key={t.id} className="dash-tr">
                 <td
-                  onClick={() => openTourneyModal(t, "view")}
+                  onClick={() => openModal(t, "view")}
                   className="dash-td font-semibold cursor-pointer text-[#00F5D4] hover:underline"
                 >
                   {t.name}
@@ -178,7 +156,9 @@ export default function TournamentManagementModule({
                 <td className="dash-td">
                   <span
                     className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                      t.status === "ongoing" ? "bg-[#FF4655]/20 text-[#FF4655]" : "bg-[#00F5D4]/15 text-[#00F5D4]"
+                      t.status === "ongoing"
+                        ? "bg-[#FF4655]/20 text-[#FF4655]"
+                        : "bg-[#00F5D4]/15 text-[#00F5D4]"
                     }`}
                   >
                     {t.status}
@@ -186,7 +166,7 @@ export default function TournamentManagementModule({
                 </td>
                 <td className="dash-td">
                   <button
-                    onClick={() => openTourneyModal(t, "edit")}
+                    onClick={() => openModal(t, "edit")}
                     className="dash-btn-ghost text-xs px-3 py-1 rounded"
                   >
                     Manage
@@ -198,8 +178,8 @@ export default function TournamentManagementModule({
         </table>
       </div>
 
-      {/* View/Edit Tournament Modal */}
-      {tourneyModalType !== "none" && selectedTourney && (
+      {/* View / Edit Modal */}
+      {modalType !== "none" && selectedTourney && (
         <div
           style={{
             position: "fixed",
@@ -215,52 +195,34 @@ export default function TournamentManagementModule({
         >
           <div className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl w-full max-w-lg p-6 relative">
             <button
-              onClick={() => {
-                setTourneyModalType("none");
-                setSelectedTourney(null);
-              }}
+              onClick={closeModal}
               className="absolute right-4 top-4 text-[var(--c-text-dim)] hover:text-[var(--c-text)]"
             >
               <IconX size={16} />
             </button>
+
             <h3 className="font-head text-xl font-bold text-[var(--c-text)] mb-4 uppercase">
-              {tourneyModalType === "edit" ? "Edit Tournament Details" : "Tournament Specifications"}
+              {modalType === "edit" ? "Edit Tournament Details" : "Tournament Specifications"}
             </h3>
 
             <div className="space-y-4">
-              {tourneyModalType === "edit" ? (
+              {modalType === "edit" ? (
                 <>
                   <div>
                     <label className="dash-label">Tournament Name</label>
-                    <input
-                      value={editTourneyName}
-                      onChange={(e) => setEditTourneyName(e.target.value)}
-                      className="dash-input"
-                    />
+                    <input value={editName} onChange={(e) => setEditName(e.target.value)} className="dash-input" />
                   </div>
                   <div>
                     <label className="dash-label">Game</label>
-                    <input
-                      value={editTourneyGame}
-                      onChange={(e) => setEditTourneyGame(e.target.value)}
-                      className="dash-input"
-                    />
+                    <input value={editGame} onChange={(e) => setEditGame(e.target.value)} className="dash-input" />
                   </div>
                   <div>
                     <label className="dash-label">Format</label>
-                    <input
-                      value={editTourneyFormat}
-                      onChange={(e) => setEditTourneyFormat(e.target.value)}
-                      className="dash-input"
-                    />
+                    <input value={editFormat} onChange={(e) => setEditFormat(e.target.value)} className="dash-input" />
                   </div>
                   <div>
                     <label className="dash-label">Status</label>
-                    <select
-                      value={editTourneyStatus}
-                      onChange={(e) => setEditTourneyStatus(e.target.value)}
-                      className="dash-select"
-                    >
+                    <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)} className="dash-select">
                       <option value="registration">registration</option>
                       <option value="ongoing">ongoing</option>
                       <option value="completed">completed</option>
@@ -287,7 +249,7 @@ export default function TournamentManagementModule({
                   </div>
                   <div className="col-span-2">
                     <span className="block text-[var(--c-text-dim)] uppercase tracking-wider text-[10px] mb-1">
-                      Teams List & Players
+                      Teams List &amp; Players
                     </span>
                     <div className="space-y-1 bg-[var(--c-surface2)] p-2.5 rounded border border-[var(--c-border)] max-h-24 overflow-y-auto">
                       {selectedTourney.teamsList.map((tm, idx) => (
@@ -305,7 +267,10 @@ export default function TournamentManagementModule({
                     <div className="flex flex-wrap gap-1">
                       {selectedTourney.matchesList.length > 0 ? (
                         selectedTourney.matchesList.map((mid) => (
-                          <span key={mid} className="bg-[var(--c-surface3)] border border-[var(--c-border)] px-2 py-0.5 rounded text-[10px] text-[var(--c-text)]">
+                          <span
+                            key={mid}
+                            className="bg-[var(--c-surface3)] border border-[var(--c-border)] px-2 py-0.5 rounded text-[10px] text-[var(--c-text)]"
+                          >
                             {mid}
                           </span>
                         ))
@@ -319,19 +284,16 @@ export default function TournamentManagementModule({
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              {tourneyModalType === "edit" ? (
+              {modalType === "edit" ? (
                 <>
                   <button
-                    onClick={handleSaveTourneyDetails}
+                    onClick={handleSave}
                     className="bg-[#00F5D4] hover:bg-[#00d8bc] text-black text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
                   >
                     Save Changes
                   </button>
                   <button
-                    onClick={() => {
-                      setTourneyModalType("none");
-                      setSelectedTourney(null);
-                    }}
+                    onClick={closeModal}
                     className="dash-btn-ghost text-xs px-4 py-2 rounded-lg"
                   >
                     Cancel
@@ -339,10 +301,7 @@ export default function TournamentManagementModule({
                 </>
               ) : (
                 <button
-                  onClick={() => {
-                    setTourneyModalType("none");
-                    setSelectedTourney(null);
-                  }}
+                  onClick={closeModal}
                   className="bg-[#8B5CF6] hover:bg-[#7c4fe3] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
                 >
                   Close

@@ -1,123 +1,89 @@
 "use client";
+
 import { useState } from "react";
-import { IconPlus, IconEdit, IconX } from "@/components/shared/icons";
+import { IconEdit, IconX } from "@/components/shared/icons";
+import { useOrganizerContext, type Team } from "@/lib/organizer-context";
 
-interface Team {
-  id: string;
-  name: string;
-  game: string;
-  head: string;
-  players: string[];
-  status: string;
-}
+export default function TeamManagementModule() {
+  const { teams, setTeams } = useOrganizerContext();
 
-interface TeamManagementModuleProps {
-  teams: Team[];
-  setTeams: React.Dispatch<React.SetStateAction<Team[]>>;
+  // ── Create-team form ──────────────────────────────────────────────────────
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamGame, setNewTeamGame] = useState("MLBB");
+  const [newTeamHead, setNewTeamHead] = useState("");
 
-  // Form state
-  newTeamName: string;
-  setNewTeamName: React.Dispatch<React.SetStateAction<string>>;
-  newTeamGame: string;
-  setNewTeamGame: React.Dispatch<React.SetStateAction<string>>;
-  newTeamHead: string;
-  setNewTeamHead: React.Dispatch<React.SetStateAction<string>>;
+  // ── Modal ─────────────────────────────────────────────────────────────────
+  const [modalType,    setModalType]    = useState<"none" | "view" | "edit">("none");
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
 
-  // Modal state
-  teamModalType: "none" | "view" | "edit";
-  setTeamModalType: React.Dispatch<React.SetStateAction<"none" | "view" | "edit">>;
-  selectedTeam: Team | null;
-  setSelectedTeam: React.Dispatch<React.SetStateAction<Team | null>>;
+  // ── Edit-modal fields ─────────────────────────────────────────────────────
+  const [editName,    setEditName]    = useState("");
+  const [editHead,    setEditHead]    = useState("");
+  const [editStatus,  setEditStatus]  = useState("");
+  const [editPlayers, setEditPlayers] = useState("");
 
-  // Edit modal state
-  editTeamName: string;
-  setEditTeamName: React.Dispatch<React.SetStateAction<string>>;
-  editTeamHead: string;
-  setEditTeamHead: React.Dispatch<React.SetStateAction<string>>;
-  editTeamStatus: string;
-  setEditTeamStatus: React.Dispatch<React.SetStateAction<string>>;
-  editTeamPlayers: string;
-  setEditTeamPlayers: React.Dispatch<React.SetStateAction<string>>;
-}
-
-export default function TeamManagementModule({
-  teams,
-  setTeams,
-
-  newTeamName,
-  setNewTeamName,
-  newTeamGame,
-  setNewTeamGame,
-  newTeamHead,
-  setNewTeamHead,
-
-  teamModalType,
-  setTeamModalType,
-  selectedTeam,
-  setSelectedTeam,
-
-  editTeamName,
-  setEditTeamName,
-  editTeamHead,
-  setEditTeamHead,
-  editTeamStatus,
-  setEditTeamStatus,
-  editTeamPlayers,
-  setEditTeamPlayers,
-}: TeamManagementModuleProps) {
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleCreateTeam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTeamName || !newTeamHead) return;
+    if (!newTeamName.trim() || !newTeamHead.trim()) return;
 
-    const newT: Team = {
-      id: `t-${Date.now()}`,
-      name: newTeamName,
-      game: newTeamGame,
-      head: newTeamHead,
-      players: [newTeamHead],
-      status: "incomplete",
-    };
-    setTeams((prev) => [...prev, newT]);
+    setTeams((prev) => [
+      ...prev,
+      {
+        id: `t-${Date.now()}`,
+        name: newTeamName.trim(),
+        game: newTeamGame,
+        head: newTeamHead.trim(),
+        players: [newTeamHead.trim()],
+        status: "incomplete",
+      },
+    ]);
+
     setNewTeamName("");
     setNewTeamHead("");
   };
 
-  const openTeamModal = (t: Team, type: "view" | "edit") => {
-    setSelectedTeam(t);
-    setTeamModalType(type);
+  const openModal = (team: Team, type: "view" | "edit") => {
+    setSelectedTeam(team);
+    setModalType(type);
     if (type === "edit") {
-      setEditTeamName(t.name);
-      setEditTeamHead(t.head);
-      setEditTeamStatus(t.status);
-      setEditTeamPlayers(t.players.join(", "));
+      setEditName(team.name);
+      setEditHead(team.head);
+      setEditStatus(team.status);
+      setEditPlayers(team.players.join(", "));
     }
   };
 
-  const handleSaveTeamDetails = () => {
-    if (!selectedTeam) return;
-    setTeams((prev) =>
-      prev.map((t) => {
-        if (t.id === selectedTeam.id) {
-          return {
-            ...t,
-            name: editTeamName,
-            head: editTeamHead,
-            status: editTeamStatus,
-            players: editTeamPlayers.split(",").map((s) => s.trim()).filter(Boolean),
-          };
-        }
-        return t;
-      })
-    );
-    setTeamModalType("none");
+  const closeModal = () => {
+    setModalType("none");
     setSelectedTeam(null);
   };
 
+  const handleSaveTeam = () => {
+    if (!selectedTeam) return;
+    setTeams((prev) =>
+      prev.map((t) => {
+        if (t.id !== selectedTeam.id) return t;
+        return {
+          ...t,
+          name: editName,
+          head: editHead,
+          status: editStatus,
+          players: editPlayers.split(",").map((s) => s.trim()).filter(Boolean),
+        };
+      })
+    );
+    closeModal();
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
+      {/* Create Form */}
       <div className="dash-card p-5">
-        <div className="dash-section-title">Create Team & Assign Head</div>
+        <div className="dash-section-title">Create Team &amp; Assign Head</div>
         <form onSubmit={handleCreateTeam} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div>
             <label className="dash-label">Team Name</label>
@@ -157,6 +123,7 @@ export default function TeamManagementModule({
         </form>
       </div>
 
+      {/* Teams Table */}
       <div className="dash-table-wrap">
         <table className="w-full border-collapse">
           <thead className="dash-thead">
@@ -170,7 +137,7 @@ export default function TeamManagementModule({
             {teams.map((t) => (
               <tr key={t.id} className="dash-tr">
                 <td
-                  onClick={() => openTeamModal(t, "view")}
+                  onClick={() => openModal(t, "view")}
                   className="dash-td font-semibold cursor-pointer text-[#00F5D4] hover:underline"
                 >
                   {t.name}
@@ -181,7 +148,9 @@ export default function TeamManagementModule({
                 <td className="dash-td">
                   <span
                     className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                      t.status === "active" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : "bg-[#FF4655]/20 text-[#FF4655]"
+                      t.status === "active"
+                        ? "bg-[#00F5D4]/15 text-[#00F5D4]"
+                        : "bg-[#FF4655]/20 text-[#FF4655]"
                     }`}
                   >
                     {t.status}
@@ -189,7 +158,7 @@ export default function TeamManagementModule({
                 </td>
                 <td className="dash-td">
                   <button
-                    onClick={() => openTeamModal(t, "edit")}
+                    onClick={() => openModal(t, "edit")}
                     className="flex items-center gap-1 dash-btn-ghost text-xs px-3 py-1 rounded"
                   >
                     <IconEdit size={11} /> Edit
@@ -201,8 +170,8 @@ export default function TeamManagementModule({
         </table>
       </div>
 
-      {/* View/Edit Team Modal */}
-      {teamModalType !== "none" && selectedTeam && (
+      {/* View / Edit Modal */}
+      {modalType !== "none" && selectedTeam && (
         <div
           style={{
             position: "fixed",
@@ -218,50 +187,36 @@ export default function TeamManagementModule({
         >
           <div className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl w-full max-w-lg p-6 relative">
             <button
-              onClick={() => {
-                setTeamModalType("none");
-                setSelectedTeam(null);
-              }}
+              onClick={closeModal}
               className="absolute right-4 top-4 text-[var(--c-text-dim)] hover:text-[var(--c-text)]"
             >
               <IconX size={16} />
             </button>
+
             <h3 className="font-head text-xl font-bold text-[var(--c-text)] mb-4 uppercase">
-              {teamModalType === "edit" ? "Edit Team Details" : "Team Roster Information"}
+              {modalType === "edit" ? "Edit Team Details" : "Team Roster Information"}
             </h3>
 
             <div className="space-y-4">
-              {teamModalType === "edit" ? (
+              {modalType === "edit" ? (
                 <>
                   <div>
                     <label className="dash-label">Team Name</label>
-                    <input
-                      value={editTeamName}
-                      onChange={(e) => setEditTeamName(e.target.value)}
-                      className="dash-input"
-                    />
+                    <input value={editName} onChange={(e) => setEditName(e.target.value)} className="dash-input" />
                   </div>
                   <div>
                     <label className="dash-label">Team Head</label>
-                    <input
-                      value={editTeamHead}
-                      onChange={(e) => setEditTeamHead(e.target.value)}
-                      className="dash-input"
-                    />
+                    <input value={editHead} onChange={(e) => setEditHead(e.target.value)} className="dash-input" />
                   </div>
                   <div>
                     <label className="dash-label">Members (Comma Separated)</label>
-                    <input
-                      value={editTeamPlayers}
-                      onChange={(e) => setEditTeamPlayers(e.target.value)}
-                      className="dash-input"
-                    />
+                    <input value={editPlayers} onChange={(e) => setEditPlayers(e.target.value)} className="dash-input" />
                   </div>
                   <div>
                     <label className="dash-label">Status</label>
                     <select
-                      value={editTeamStatus}
-                      onChange={(e) => setEditTeamStatus(e.target.value)}
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value)}
                       className="dash-select"
                     >
                       <option value="active">active</option>
@@ -292,9 +247,12 @@ export default function TeamManagementModule({
                       Roster Members List
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {selectedTeam.players.map((plyr, idx) => (
-                        <span key={idx} className="bg-[var(--c-surface3)] border border-[var(--c-border)] px-2.5 py-1 rounded text-[11px] text-[var(--c-text)]">
-                          {plyr}
+                      {selectedTeam.players.map((player, idx) => (
+                        <span
+                          key={idx}
+                          className="bg-[var(--c-surface3)] border border-[var(--c-border)] px-2.5 py-1 rounded text-[11px] text-[var(--c-text)]"
+                        >
+                          {player}
                         </span>
                       ))}
                     </div>
@@ -304,19 +262,16 @@ export default function TeamManagementModule({
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              {teamModalType === "edit" ? (
+              {modalType === "edit" ? (
                 <>
                   <button
-                    onClick={handleSaveTeamDetails}
+                    onClick={handleSaveTeam}
                     className="bg-[#00F5D4] hover:bg-[#00d8bc] text-black text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
                   >
                     Save Changes
                   </button>
                   <button
-                    onClick={() => {
-                      setTeamModalType("none");
-                      setSelectedTeam(null);
-                    }}
+                    onClick={closeModal}
                     className="dash-btn-ghost text-xs px-4 py-2 rounded-lg"
                   >
                     Cancel
@@ -324,10 +279,7 @@ export default function TeamManagementModule({
                 </>
               ) : (
                 <button
-                  onClick={() => {
-                    setTeamModalType("none");
-                    setSelectedTeam(null);
-                  }}
+                  onClick={closeModal}
                   className="bg-[#8B5CF6] hover:bg-[#7c4fe3] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
                 >
                   Close

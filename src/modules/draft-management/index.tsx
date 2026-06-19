@@ -1,129 +1,87 @@
 "use client";
-import { IconX } from "@/components/shared/icons";
+
 import { useState, useMemo } from "react";
+import { IconX } from "@/components/shared/icons";
+import { useOrganizerContext, type Player } from "@/lib/organizer-context";
 
-interface Player {
-  name: string;
-  ign: string;
-  game: string;
-  role: string;
-  rank: string;
-  winRate: string;
-  kda: string;
-  history: string[];
-  team?: string;
-}
+export default function DraftManagementModule() {
+  const { freeAgents, setFreeAgents, draftedPlayers, setDraftedPlayers, teams, setTeams } =
+    useOrganizerContext();
 
-interface Team {
-  id: string;
-  name: string;
-  game: string;
-  head: string;
-  players: string[];
-  status: string;
-}
-
-interface DraftManagementModuleProps {
-  // Data and setters
-  freeAgents: Player[];
-  setFreeAgents: React.Dispatch<React.SetStateAction<Player[]>>;
-  draftedPlayers: Player[];
-  setDraftedPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
-  teams: Team[];
-  setTeams: React.Dispatch<React.SetStateAction<Team[]>>;
-}
-
-export default function DraftManagementModule({
-  freeAgents,
-  setFreeAgents,
-  draftedPlayers,
-  setDraftedPlayers,
-  teams,
-  setTeams,
-}: DraftManagementModuleProps) {
-  // UI state
-  const [draftSearch, setDraftSearch] = useState("");
-  const [draftGame, setDraftGame] = useState("All");
-  const [draftRole, setDraftRole] = useState("All");
-  const [draftRank, setDraftRank] = useState("All");
+  // ── Local UI state ────────────────────────────────────────────────────────
+  const [draftSearch,  setDraftSearch]  = useState("");
+  const [draftGame,    setDraftGame]    = useState("All");
+  const [draftRole,    setDraftRole]    = useState("All");
+  const [draftRank,    setDraftRank]    = useState("All");
   const [hoveredPlayer, setHoveredPlayer] = useState<Player | null>(null);
 
-  // Derived values
-  const roleOptions = useMemo(() => {
-    return draftGame === "CODM"
-      ? ["All Roles", "Slayers", "Anchors", "Supports", "Objective"]
-      : ["All Roles", "XP Lane", "Gold Lane", "Mid Lane", "Roamer", "Jungler"];
-  }, [draftGame]);
+  // ── Derived filter options ────────────────────────────────────────────────
 
-  const rankOptions = useMemo(() => {
-    return draftGame === "CODM"
-      ? ["All Ranks", "Rookie", "Veteran", "Elite", "Pro", "Master", "Grandmaster", "Legendary"]
-      : ["All Ranks", "Mythic", "Mythical Glory", "Legend"];
-  }, [draftGame]);
+  const roleOptions = useMemo(
+    () =>
+      draftGame === "CODM"
+        ? ["All Roles", "Slayers", "Anchors", "Supports", "Objective"]
+        : ["All Roles", "XP Lane", "Gold Lane", "Mid Lane", "Roamer", "Jungler"],
+    [draftGame]
+  );
 
-  // Filtered lists
-  const filteredUnpicked = useMemo(() => {
-    return freeAgents.filter((p) => {
-      const matchesSearch =
-        p.name.toLowerCase().includes(draftSearch.toLowerCase()) ||
-        p.ign.toLowerCase().includes(draftSearch.toLowerCase());
-      const matchesGame = draftGame === "All" || p.game === draftGame;
-      const matchesRole = draftRole === "All" || p.role === draftRole;
-      const matchesRank = draftRank === "All" || p.rank === draftRank;
-      return matchesSearch && matchesGame && matchesRole && matchesRank;
+  const rankOptions = useMemo(
+    () =>
+      draftGame === "CODM"
+        ? ["All Ranks", "Rookie", "Veteran", "Elite", "Pro", "Master", "Grandmaster", "Legendary"]
+        : ["All Ranks", "Mythic", "Mythical Glory", "Legend"],
+    [draftGame]
+  );
+
+  // ── Filtered lists ────────────────────────────────────────────────────────
+
+  const applyFilters = (list: Player[]) =>
+    list.filter((p) => {
+      const q = draftSearch.toLowerCase();
+      return (
+        (p.name.toLowerCase().includes(q) || p.ign.toLowerCase().includes(q)) &&
+        (draftGame === "All" || p.game === draftGame) &&
+        (draftRole === "All" || p.role === draftRole) &&
+        (draftRank === "All" || p.rank === draftRank)
+      );
     });
-  }, [freeAgents, draftSearch, draftGame, draftRole, draftRank]);
 
-  const filteredDrafted = useMemo(() => {
-    return draftedPlayers.filter((p) => {
-      const matchesSearch =
-        p.name.toLowerCase().includes(draftSearch.toLowerCase()) ||
-        p.ign.toLowerCase().includes(draftSearch.toLowerCase());
-      const matchesGame = draftGame === "All" || p.game === draftGame;
-      const matchesRole = draftRole === "All" || p.role === draftRole;
-      const matchesRank = draftRank === "All" || p.rank === draftRank;
-      return matchesSearch && matchesGame && matchesRole && matchesRank;
-    });
-  }, [draftedPlayers, draftSearch, draftGame, draftRole, draftRank]);
+  const filteredUnpicked = useMemo(() => applyFilters(freeAgents),    [freeAgents, draftSearch, draftGame, draftRole, draftRank]);
+  const filteredDrafted  = useMemo(() => applyFilters(draftedPlayers), [draftedPlayers, draftSearch, draftGame, draftRole, draftRank]);
 
-  const handleDraftAction = (player: Player, targetTeamName: string) => {
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleDraft = (player: Player, targetTeamName: string) => {
     setFreeAgents((prev) => prev.filter((p) => p.ign !== player.ign));
     setDraftedPlayers((prev) => [...prev, { ...player, team: targetTeamName }]);
     setTeams((prev) =>
-      prev.map((t) => {
-        if (t.name === targetTeamName) {
-          return {
-            ...t,
-            players: [...t.players, player.name],
-          };
-        }
-        return t;
-      })
+      prev.map((t) =>
+        t.name === targetTeamName
+          ? { ...t, players: [...t.players, player.name] }
+          : t
+      )
     );
   };
 
-  const handleRemoveDrafted = (player: Player) => {
+  const handleUndraft = (player: Player) => {
     setDraftedPlayers((prev) => prev.filter((p) => p.ign !== player.ign));
     setFreeAgents((prev) => [...prev, { ...player, team: undefined }]);
     setTeams((prev) =>
-      prev.map((t) => {
-        if (t.name === player.team) {
-          return {
-            ...t,
-            players: t.players.filter((name) => name !== player.name),
-          };
-        }
-        return t;
-      })
+      prev.map((t) =>
+        t.name === player.team
+          ? { ...t, players: t.players.filter((name) => name !== player.name) }
+          : t
+      )
     );
-    if (hoveredPlayer?.ign === player.ign) {
-      setHoveredPlayer(null);
-    }
+    if (hoveredPlayer?.ign === player.ign) setHoveredPlayer(null);
   };
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2 space-y-5">
+        {/* Filters */}
         <div className="dash-card p-4 flex flex-col md:flex-row gap-3">
           <div className="flex-1">
             <input
@@ -152,23 +110,21 @@ export default function DraftManagementModule({
               onChange={(e) => setDraftRole(e.target.value)}
               className="dash-select text-xs"
             >
-              {roleOptions.map((role) => (
-                <option key={role} value={role}>{role}</option>
-              ))}
+              {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
             <select
               value={draftRank}
               onChange={(e) => setDraftRank(e.target.value)}
               className="dash-select text-xs"
             >
-              {rankOptions.map((rank) => (
-                <option key={rank} value={rank}>{rank}</option>
-              ))}
+              {rankOptions.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
         </div>
 
+        {/* Player columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Available pool */}
           <div className="dash-card p-4 flex flex-col h-[400px]">
             <div className="dash-section-title pb-2 border-b border-[var(--c-border)]">
               Available Player Pool ({filteredUnpicked.length})
@@ -188,24 +144,19 @@ export default function DraftManagementModule({
                     </div>
                   </div>
                   <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        handleDraftAction(fa, e.target.value);
-                      }
-                    }}
+                    onChange={(e) => { if (e.target.value) handleDraft(fa, e.target.value); }}
                     className="dash-select w-24 text-[10px] py-1 px-1.5"
                     defaultValue=""
                   >
-                    <option value="" disabled>Draft to...</option>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.name}>{t.name}</option>
-                    ))}
+                    <option value="" disabled>Draft to…</option>
+                    {teams.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
                   </select>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Drafted players */}
           <div className="dash-card p-4 flex flex-col h-[400px]">
             <div className="dash-section-title pb-2 border-b border-[var(--c-border)]">
               Drafted Players ({filteredDrafted.length})
@@ -229,10 +180,7 @@ export default function DraftManagementModule({
                       {dp.team}
                     </span>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveDrafted(dp);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); handleUndraft(dp); }}
                       className="flex items-center gap-1 text-[#FF4655] text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-lg border border-[#FF4655]/20 hover:bg-[#FF4655]/10 transition-colors"
                     >
                       <IconX size={12} /> Remove
@@ -245,6 +193,7 @@ export default function DraftManagementModule({
         </div>
       </div>
 
+      {/* Stats card */}
       <div>
         <div className="dash-card p-5 sticky top-5">
           <div className="dash-section-title pb-2 border-b border-[var(--c-border)]">
@@ -273,7 +222,7 @@ export default function DraftManagementModule({
 
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-[var(--c-text-muted)] mb-1.5 font-bold">
-                  Player Role & rank
+                  Player Role &amp; Rank
                 </div>
                 <div className="text-xs text-[var(--c-text)]">
                   Role: <span className="font-semibold text-purple-300">{hoveredPlayer.role}</span>
@@ -288,11 +237,13 @@ export default function DraftManagementModule({
                   Recent History
                 </div>
                 <div className="flex gap-1">
-                  {hoveredPlayer.history.map((h, index) => (
+                  {hoveredPlayer.history.map((h, idx) => (
                     <span
-                      key={index}
+                      key={idx}
                       className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        h === "Win" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : "bg-[#FF4655]/20 text-[#FF4655]"
+                        h === "Win"
+                          ? "bg-[#00F5D4]/15 text-[#00F5D4]"
+                          : "bg-[#FF4655]/20 text-[#FF4655]"
                       }`}
                     >
                       {h[0]}

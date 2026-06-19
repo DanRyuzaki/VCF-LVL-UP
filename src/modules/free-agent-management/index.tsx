@@ -1,76 +1,67 @@
 "use client";
 
+import { useState } from "react";
 import { IconSearch } from "@/components/shared/icons";
+import { useOrganizerContext } from "@/lib/organizer-context";
 
-interface Player {
-  name: string;
-  ign: string;
-  game: string;
-  role: string;
-  rank: string;
-  winRate: string;
-  kda: string;
-  history: string[];
-}
+export default function FreeAgentManagementModule() {
+  const { freeAgents, setFreeAgents } = useOrganizerContext();
 
-interface FreeAgentManagementModuleProps {
-  // Data and setters
-  freeAgents: Player[];
-  setFreeAgents: React.Dispatch<React.SetStateAction<Player[]>>;
+  // ── Local form state ──────────────────────────────────────────────────────
+  const [newFaName,    setNewFaName]    = useState("");
+  const [newFaIgn,     setNewFaIgn]     = useState("");
+  const [newFaGame,    setNewFaGame]    = useState("MLBB");
+  const [newFaRole,    setNewFaRole]    = useState("Mid Lane");
+  const [newFaRank,    setNewFaRank]    = useState("Mythic");
+  const [newFaWinRate, setNewFaWinRate] = useState("60%");
+  const [newFaKda,     setNewFaKda]     = useState("4.0");
+  const [search,       setSearch]       = useState("");
 
-  // Form state for adding new free agent
-  newFaName: string;
-  setNewFaName: React.Dispatch<React.SetStateAction<string>>;
-  newFaIgn: string;
-  setNewFaIgn: React.Dispatch<React.SetStateAction<string>>;
-  newFaGame: string;
-  setNewFaGame: React.Dispatch<React.SetStateAction<string>>;
-  newFaRole: string;
-  setNewFaRole: React.Dispatch<React.SetStateAction<string>>;
-  newFaRank: string;
-  setNewFaRank: React.Dispatch<React.SetStateAction<string>>;
-  newFaWinRate: string;
-  setNewFaWinRate: React.Dispatch<React.SetStateAction<string>>;
-  newFaKda: string;
-  setNewFaKda: React.Dispatch<React.SetStateAction<string>>;
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
-  // Search state
-  freeAgentSearch: string;
-  setFreeAgentSearch: React.Dispatch<React.SetStateAction<string>>;
+  const handleCreateFreeAgent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFaName.trim() || !newFaIgn.trim()) return;
 
-  // Handler for creating free agent
-  handleCreateFreeAgent: (e: React.FormEvent) => void;
-}
+    setFreeAgents((prev) => [
+      ...prev,
+      {
+        name: newFaName.trim(),
+        ign: newFaIgn.trim(),
+        game: newFaGame,
+        role: newFaRole,
+        rank: newFaRank,
+        winRate: newFaWinRate,
+        kda: newFaKda,
+        history: ["Win", "Win", "Loss", "Win", "Loss"],
+      },
+    ]);
 
-export default function FreeAgentManagementModule({
-  freeAgents,
-  setFreeAgents,
+    setNewFaName("");
+    setNewFaIgn("");
+  };
 
-  newFaName,
-  setNewFaName,
-  newFaIgn,
-  setNewFaIgn,
-  newFaGame,
-  setNewFaGame,
-  newFaRole,
-  setNewFaRole,
-  newFaRank,
-  setNewFaRank,
-  newFaWinRate,
-  setNewFaWinRate,
-  newFaKda,
-  setNewFaKda,
+  const handleRemove = (ign: string) => {
+    setFreeAgents((prev) => prev.filter((p) => p.ign !== ign));
+  };
 
-  freeAgentSearch,
-  setFreeAgentSearch,
+  const filtered = freeAgents.filter(
+    (fa) =>
+      fa.name.toLowerCase().includes(search.toLowerCase()) ||
+      fa.ign.toLowerCase().includes(search.toLowerCase())
+  );
 
-  handleCreateFreeAgent,
-}: FreeAgentManagementModuleProps) {
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
+      {/* Add Free Agent Form */}
       <div className="dash-card p-5">
         <div className="dash-section-title">Add Free Agent Player</div>
-        <form onSubmit={handleCreateFreeAgent} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <form
+          onSubmit={handleCreateFreeAgent}
+          className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end"
+        >
           <div>
             <label className="dash-label">Player Name</label>
             <input
@@ -109,14 +100,15 @@ export default function FreeAgentManagementModule({
         </form>
       </div>
 
+      {/* Free Agents Table */}
       <div className="dash-card p-4">
         <div className="relative mb-4">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-text-dim)]">
             <IconSearch size={14} />
           </span>
           <input
-            value={freeAgentSearch}
-            onChange={(e) => setFreeAgentSearch(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter free agents..."
             className="dash-input pl-9"
           />
@@ -132,29 +124,23 @@ export default function FreeAgentManagementModule({
               </tr>
             </thead>
             <tbody>
-              {freeAgents
-                .filter(
-                  (fa) =>
-                    fa.name.toLowerCase().includes(freeAgentSearch.toLowerCase()) ||
-                    fa.ign.toLowerCase().includes(freeAgentSearch.toLowerCase())
-                )
-                .map((fa) => (
-                  <tr key={fa.ign} className="dash-tr">
-                    <td className="dash-td font-semibold">{fa.name}</td>
-                    <td className="dash-td-muted">{fa.ign}</td>
-                    <td className="dash-td">{fa.game}</td>
-                    <td className="dash-td">{fa.role}</td>
-                    <td className="dash-td font-bold text-purple-300">{fa.rank}</td>
-                    <td className="dash-td">
-                      <button
-                        onClick={() => setFreeAgents((prev) => prev.filter((p) => p.ign !== fa.ign))}
-                        className="dash-btn-ghost text-xs px-3 py-1 rounded"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+              {filtered.map((fa) => (
+                <tr key={fa.ign} className="dash-tr">
+                  <td className="dash-td font-semibold">{fa.name}</td>
+                  <td className="dash-td-muted">{fa.ign}</td>
+                  <td className="dash-td">{fa.game}</td>
+                  <td className="dash-td">{fa.role}</td>
+                  <td className="dash-td font-bold text-purple-300">{fa.rank}</td>
+                  <td className="dash-td">
+                    <button
+                      onClick={() => handleRemove(fa.ign)}
+                      className="dash-btn-ghost text-xs px-3 py-1 rounded"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

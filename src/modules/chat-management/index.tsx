@@ -1,124 +1,205 @@
 "use client";
+import { useState, useEffect, useRef } from "react";
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  serverTimestamp,
+  query,
+  orderBy,
+  where,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
 
-import { useState } from "react";
-import { useOrganizerContext } from "@/lib/organizer-context";
+interface ChatMessage {
+  id: string;
+  text: string;
+  senderUid: string;
+  senderName: string;
+  senderRole: string;
+  context: string;
+  createdAt?: unknown;
+  timestamp?: number;
+}
 
 export default function ChatManagementModule() {
-  const { chatLeaders, setChatLeaders } = useOrganizerContext();
+  const { profile } = useAuth();
 
-  const [activeChatIndex, setActiveChatIndex] = useState(0);
-  const [chatText, setChatText] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatText.trim()) return;
+  // ── Guard ─────────────────────────────────────────────────────────────────
+  const allowed = profile?.role === "organizer";
 
-    const newMsg = {
-      sender: "Organizer",
-      text: chatText,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
+  // ── Firestore listener — organizer context channel ────────────────────────
+  useEffect(() => {
+    if (!allowed) return;
 
-    setChatLeaders((prev) =>
-      prev.map((leader, i) => {
-        if (i !== activeChatIndex) return leader;
-        return { ...leader, unread: 0, history: [...leader.history, newMsg] };
-      })
+    const q = query(
+      collection(db, "chats"),
+      where("context", "==", "organizer"),
+      orderBy("createdAt", "asc")
     );
 
-    setChatText("");
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setMessages(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<ChatMessage, "id">),
+          }))
+        );
+        setLoading(false);
+      },
+      () => setLoading(false)
+    );
 
-    setTimeout(() => {
-      const autoReply = {
-        sender: chatLeaders[activeChatIndex].name,
-        text: "Got it! Thanks for reaching out, I will coordinate this with the team.",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      setChatLeaders((prev) =>
-        prev.map((leader, i) => {
-          if (i !== activeChatIndex) return leader;
-          return { ...leader, history: [...leader.history, autoReply] };
-        })
-      );
-    }, 1500);
+    return unsub;
+  }, [allowed]);
+
+  // Auto-scroll
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // ── Send ──────────────────────────────────────────────────────────────────
+  const handleSend = async () => {
+    if (!text.trim() || !profile) return;
+    setSending(true);
+    setError(null);
+    try {
+      await addDoc(collection(db, "chats"), {
+        text: text.trim(),
+        senderUid: profile.uid,
+        senderName: `${profile.firstName} ${profile.lastName}`,
+        senderRole: profile.role,
+        context: "organizer",
+        createdAt: serverTimestamp(),
+        timestamp: Date.now(),
+      });
+      setText("");
+    } catch {
+      setError("Failed to send message.");
+    } finally {
+      setSending(false);
+    }
   };
 
-  const activeLeader = chatLeaders[activeChatIndex];
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (!allowed) {
+    return (
+      <div className="p-6 text-red-400 text-sm">
+        Access denied. Organizers only.
+      </div>
+    );
+  }
+
+  const formatTime = (msg: ChatMessage) => {
+    try {
+      const ts = msg.createdAt as { toDate?: () => Date };
+      const d = ts?.toDate ? ts.toDate() : new Date(msg.timestamp ?? 0);
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
+  };
+
+  const isMine = (msg: ChatMessage) => msg.senderUid === profile?.uid;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-      {/* Leader list */}
-      <div className="dash-card p-4 space-y-2">
-        <div className="dash-section-title">Team Leaders</div>
-        {chatLeaders.map((leader, i) => (
-          <button
-            key={leader.name}
-            onClick={() => setActiveChatIndex(i)}
-            className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-colors ${
-              i === activeChatIndex
-                ? "border-[#00F5D4] bg-[#00F5D4]/5"
-                : "border-[var(--c-border)] hover:border-[var(--c-border-hover)]"
-            }`}
-          >
-            <div>
-              <div className="text-xs font-bold text-[var(--c-text)]">{leader.name}</div>
-              <div className="text-[10px] text-[var(--c-text-muted)]">{leader.team}</div>
-            </div>
-            {leader.unread > 0 && (
-              <span className="text-[9px] font-bold bg-[#FF4655] text-white px-1.5 py-0.5 rounded-full">
-                {leader.unread}
-              </span>
-            )}
-          </button>
-        ))}
+    <div className="flex flex-col h-[calc(100vh-10rem)] max-h-[700px] bg-[#1a1f2e] rounded-xl border border-white/10 overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-white/10 flex items-center gap-3">
+        <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+        <h2 className="text-white font-semibold text-sm tracking-wide">
+          Organizer Chat
+        </h2>
+        <span className="ml-auto text-xs text-white/40">
+          {messages.length} message{messages.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
-      {/* Chat window */}
-      <div className="md:col-span-2 dash-card p-4 flex flex-col h-[480px]">
-        <div className="pb-3 mb-3 border-b border-[var(--c-border)]">
-          <div className="text-xs font-bold text-[var(--c-text)]">{activeLeader.name}</div>
-          <div className="text-[10px] text-[var(--c-text-muted)]">{activeLeader.team}</div>
-        </div>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {loading && (
+          <p className="text-center text-white/40 text-sm mt-8">Loading…</p>
+        )}
 
-        <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-          {activeLeader.history.map((msg, i) => {
-            const isOrganizer = msg.sender === "Organizer";
-            return (
-              <div
-                key={i}
-                className={`flex flex-col max-w-[75%] ${isOrganizer ? "ml-auto items-end" : "items-start"}`}
-              >
-                <div
-                  className={`px-3 py-2 rounded-xl text-xs ${
-                    isOrganizer
-                      ? "bg-[#00F5D4]/15 text-[#00F5D4]"
-                      : "bg-[var(--c-surface2)] text-[var(--c-text)]"
-                  }`}
-                >
-                  {msg.text}
-                </div>
-                <div className="text-[9px] text-[var(--c-text-dim)] mt-1">
-                  {msg.sender} · {msg.time}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {!loading && messages.length === 0 && (
+          <p className="text-center text-white/30 text-sm mt-16">
+            No messages yet. Start the conversation!
+          </p>
+        )}
 
-        <form onSubmit={handleSendMessage} className="flex gap-2 mt-3 pt-3 border-t border-[var(--c-border)]">
-          <input
-            value={chatText}
-            onChange={(e) => setChatText(e.target.value)}
-            placeholder="Type a message..."
-            className="dash-input flex-1"
-          />
-          <button
-            type="submit"
-            className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex flex-col ${isMine(msg) ? "items-end" : "items-start"}`}
           >
-            Send
-          </button>
-        </form>
+            <div className="flex items-center gap-2 mb-1">
+              {!isMine(msg) && (
+                <span className="text-xs font-medium text-white/70">
+                  {msg.senderName}
+                </span>
+              )}
+              <span className="text-[10px] text-white/30">{formatTime(msg)}</span>
+              {isMine(msg) && (
+                <span className="text-xs font-medium text-white/70">You</span>
+              )}
+            </div>
+
+            <div
+              className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                isMine(msg)
+                  ? "bg-indigo-600 text-white rounded-tr-sm"
+                  : "bg-white/10 text-white/90 rounded-tl-sm"
+              }`}
+            >
+              {msg.text}
+            </div>
+          </div>
+        ))}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {error && (
+        <p className="px-4 py-2 text-xs text-red-400 bg-red-500/10 border-t border-red-500/20">
+          {error}
+        </p>
+      )}
+
+      {/* Input */}
+      <div className="px-4 py-3 border-t border-white/10 flex gap-3 items-end">
+        <textarea
+          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 transition min-h-[44px] max-h-32"
+          placeholder="Type a message… (Enter to send)"
+          rows={1}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKey}
+          disabled={sending}
+        />
+        <button
+          onClick={handleSend}
+          disabled={sending || !text.trim()}
+          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition shrink-0"
+        >
+          {sending ? "…" : "Send"}
+        </button>
       </div>
     </div>
   );

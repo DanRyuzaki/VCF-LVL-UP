@@ -1,55 +1,246 @@
 "use client";
+import { useState, useEffect } from "react";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
 
-const highlights = [
-  { label: "Tournament MVP Leader", value: "Marco Reyes" },
-  { label: "KDA Leader",            value: "Claire Ong (5.1)" },
-  { label: "Average Game Length",   value: "14m 32s" },
-];
+interface Player {
+  id: string;
+  name: string;
+  ign: string;
+  game: string;
+  role: string;
+  rank: string;
+  winRate: string;
+  kda: string;
+  history: string[];
+  drafted: boolean;
+  team: string | null;
+}
 
-const leaderboard = [
-  { name: "Marco Reyes",  ign: "MarcoRey_MLBB",  kda: "4.8", wr: "65%", rating: "1850" },
-  { name: "Claire Ong",   ign: "ClaireOng",       kda: "5.1", wr: "69%", rating: "1920" },
-  { name: "Ana Lim",      ign: "AnaLim_PH",       kda: "4.2", wr: "64%", rating: "1780" },
-  { name: "Sophia Lopez", ign: "SophL_Support",   kda: "4.5", wr: "58%", rating: "1720" },
-];
+type SortKey = "name" | "kda" | "winRate" | "game";
 
 export default function StatsManagementModule() {
+  const { profile } = useAuth();
+
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [gameFilter, setGameFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("kda");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const allowed =
+    profile?.role === "organizer" || profile?.role === "admin";
+
+  // ── Firestore listener ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!allowed) return;
+
+    const q = query(collection(db, "players"), orderBy("name", "asc"));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setPlayers(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<Player, "id">),
+          }))
+        );
+        setLoading(false);
+      },
+      () => setLoading(false)
+    );
+
+    return unsub;
+  }, [allowed]);
+
+  if (!allowed) {
+    return <div className="p-6 text-red-400 text-sm">Access denied.</div>;
+  }
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const games = [...new Set(players.map((p) => p.game).filter(Boolean))];
+
+  const parseNum = (val: string) => parseFloat(val?.replace("%", "") || "0") || 0;
+
+  const filtered = players
+    .filter((p) => {
+      const q = search.toLowerCase();
+      const matchSearch =
+        p.name?.toLowerCase().includes(q) ||
+        p.ign?.toLowerCase().includes(q) ||
+        p.role?.toLowerCase().includes(q) ||
+        p.team?.toLowerCase().includes(q);
+      const matchGame = gameFilter === "all" || p.game === gameFilter;
+      return matchSearch && matchGame;
+    })
+    .sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortKey === "game") cmp = a.game.localeCompare(b.game);
+      else if (sortKey === "kda") cmp = parseNum(a.kda) - parseNum(b.kda);
+      else if (sortKey === "winRate") cmp = parseNum(a.winRate) - parseNum(b.winRate);
+      return sortDir === "desc" ? -cmp : cmp;
+    });
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("desc"); }
+  };
+
+  const SortIcon = ({ k }: { k: SortKey }) =>
+    sortKey === k ? (
+      <span className="ml-1 text-indigo-400">{sortDir === "desc" ? "↓" : "↑"}</span>
+    ) : (
+      <span className="ml-1 text-white/20">↕</span>
+    );
+
+  const histColor = (r: string) =>
+    r === "Win" ? "bg-emerald-500/20 text-emerald-400" :
+    r === "Loss" ? "bg-red-500/20 text-red-400" :
+    "bg-white/10 text-white/40";
+
+  // KPI summary
+  const totalPlayers = players.length;
+  const drafted = players.filter((p) => p.drafted).length;
+  const freeAgents = totalPlayers - drafted;
+  const avgKda =
+    totalPlayers > 0
+      ? (players.reduce((s, p) => s + parseNum(p.kda), 0) / totalPlayers).toFixed(2)
+      : "—";
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {highlights.map((s, i) => (
-          <div key={i} className="dash-card p-5">
-            <div className="text-[10px] uppercase tracking-wider text-[var(--c-text-muted)]">{s.label}</div>
-            <div className="font-head text-2xl font-bold text-[var(--c-text)] mt-1">{s.value}</div>
+      {/* Header */}
+      <div>
+        <h2 className="text-white text-xl font-bold">Player Statistics</h2>
+        <p className="text-white/40 text-sm mt-0.5">
+          Live from Firestore — {totalPlayers} player{totalPlayers !== 1 ? "s" : ""} tracked
+        </p>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Total Players", value: totalPlayers, color: "text-white" },
+          { label: "Drafted",       value: drafted,      color: "text-indigo-400" },
+          { label: "Free Agents",   value: freeAgents,   color: "text-amber-400" },
+          { label: "Avg KDA",       value: avgKda,       color: "text-emerald-400" },
+        ].map((c) => (
+          <div key={c.label} className="bg-white/5 border border-white/10 rounded-xl p-4">
+            <p className="text-white/40 text-xs mb-1">{c.label}</p>
+            <p className={`text-2xl font-bold ${c.color}`}>{c.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="dash-card p-5">
-        <div className="dash-section-title">Player Leaderboard Stats</div>
-        <div className="dash-table-wrap">
-          <table className="w-full border-collapse">
-            <thead className="dash-thead">
-              <tr>
-                {["Player", "IGN", "KDA Ratio", "Win Rate", "Skill Rating"].map((h) => (
-                  <th key={h} className="dash-th">{h}</th>
-                ))}
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <input
+          type="text"
+          placeholder="Search by name, IGN, role, team…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 min-w-48 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+        <select
+          value={gameFilter}
+          onChange={(e) => setGameFilter(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        >
+          <option value="all">All Games</option>
+          {games.map((g) => (
+            <option key={g} value={g}>{g}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="text-center py-16 text-white/40 text-sm">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-white/30 text-sm">
+          No players match your search.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-white/10">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-white/5 text-white/50 uppercase text-[11px] tracking-wider">
+                <th
+                  className="px-4 py-3 text-left cursor-pointer hover:text-white/80 transition"
+                  onClick={() => toggleSort("name")}
+                >
+                  Player <SortIcon k="name" />
+                </th>
+                <th
+                  className="px-4 py-3 text-left cursor-pointer hover:text-white/80 transition"
+                  onClick={() => toggleSort("game")}
+                >
+                  Game <SortIcon k="game" />
+                </th>
+                <th className="px-4 py-3 text-left">Role</th>
+                <th className="px-4 py-3 text-left">Rank</th>
+                <th
+                  className="px-4 py-3 text-center cursor-pointer hover:text-white/80 transition"
+                  onClick={() => toggleSort("winRate")}
+                >
+                  Win Rate <SortIcon k="winRate" />
+                </th>
+                <th
+                  className="px-4 py-3 text-center cursor-pointer hover:text-white/80 transition"
+                  onClick={() => toggleSort("kda")}
+                >
+                  KDA <SortIcon k="kda" />
+                </th>
+                <th className="px-4 py-3 text-left">Team</th>
+                <th className="px-4 py-3 text-center">Recent</th>
               </tr>
             </thead>
-            <tbody>
-              {leaderboard.map((p, idx) => (
-                <tr key={idx} className="dash-tr">
-                  <td className="dash-td font-semibold">{p.name}</td>
-                  <td className="dash-td-muted">{p.ign}</td>
-                  <td className="dash-td font-bold text-purple-300">{p.kda}</td>
-                  <td className="dash-td text-[#00F5D4]">{p.wr}</td>
-                  <td className="dash-td font-bold text-[var(--c-text)]">{p.rating} MMR</td>
+            <tbody className="divide-y divide-white/5">
+              {filtered.map((p) => (
+                <tr key={p.id} className="hover:bg-white/5 transition text-white">
+                  <td className="px-4 py-3">
+                    <p className="font-medium">{p.name}</p>
+                    <p className="text-white/40 text-xs">{p.ign}</p>
+                  </td>
+                  <td className="px-4 py-3 text-white/70">{p.game}</td>
+                  <td className="px-4 py-3 text-white/70">{p.role}</td>
+                  <td className="px-4 py-3">
+                    <span className="bg-amber-500/15 text-amber-400 text-xs px-2 py-0.5 rounded-full">
+                      {p.rank}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center text-emerald-400 font-medium">
+                    {p.winRate}
+                  </td>
+                  <td className="px-4 py-3 text-center text-indigo-400 font-bold">
+                    {p.kda}
+                  </td>
+                  <td className="px-4 py-3 text-white/60 text-xs">
+                    {p.team ?? (
+                      <span className="text-amber-400">Free Agent</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 justify-center flex-wrap">
+                      {(p.history ?? []).slice(-5).map((r, i) => (
+                        <span
+                          key={i}
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${histColor(r)}`}
+                        >
+                          {r[0]}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      )}
     </div>
   );
 }

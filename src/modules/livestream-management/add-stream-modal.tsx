@@ -1,42 +1,57 @@
 "use client";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import ModalBackdrop from "@/components/shared/modal-backdrop";
 import { Livestream } from "@/types/announcement";
-import { tournaments } from "@/data/tournaments";
+import { OrganizerContext } from "@/lib/organizer-context";
 
 interface AddStreamModalProps {
   onClose: () => void;
-  onSave: (stream: Livestream) => void;
+  onSave:  (stream: Livestream) => void | Promise<void>;
 }
 
 export default function AddStreamModal({ onClose, onSave }: AddStreamModalProps) {
-  const [title, setTitle] = useState("");
-  const [tournament, setTournament] = useState(tournaments[0]?.name || "");
-  const [platform, setPlatform] = useState("YouTube");
-  const [url, setUrl] = useState("");
-  const [schedule, setSchedule] = useState("");
-  const [status, setStatus] = useState<"live" | "scheduled" | "ended">("scheduled");
-  const [submitted, setSubmitted] = useState(false);
+  // Pull live tournament list from OrganizerContext (Firestore-backed).
+  // If this modal is rendered outside the OrganizerProvider (shouldn't happen
+  // for admin) we fall back to an empty list gracefully.
+  const ctx         = useContext(OrganizerContext);
+  const tournaments = ctx?.tournaments ?? [];
 
-  const handleSave = () => {
+  const defaultTournament =
+    tournaments.length > 0 ? `${tournaments[0].name} S${tournaments[0].season}` : "";
+
+  const [title,      setTitle]      = useState("");
+  const [tournament, setTournament] = useState(defaultTournament);
+  const [platform,   setPlatform]   = useState("YouTube");
+  const [url,        setUrl]        = useState("");
+  const [schedule,   setSchedule]   = useState("");
+  const [status,     setStatus]     = useState<"live" | "scheduled" | "ended">("scheduled");
+  const [submitted,  setSubmitted]  = useState(false);
+  const [saving,     setSaving]     = useState(false);
+
+  const fieldError = (val: string) => submitted && !val;
+
+  const handleSave = async () => {
     setSubmitted(true);
     if (!title || !url) return;
 
     const newStream: Livestream = {
-      id: `ls_${Date.now()}`,
-      label: title,
+      id:             `ls_${Date.now()}`,   // transient; Firestore will assign real ID
+      label:          title,
       title,
       url,
       status,
-      tournamentName: tournament,
+      tournamentName: tournament || "—",
       platform,
       schedule,
     };
-    onSave(newStream);
-    onClose();
-  };
 
-  const fieldError = (val: string) => submitted && !val;
+    setSaving(true);
+    try {
+      await onSave(newStream);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <ModalBackdrop onClose={onClose} title="Add Stream" subtitle="Create a new livestream entry" maxWidth="520px">
@@ -58,7 +73,14 @@ export default function AddStreamModal({ onClose, onSave }: AddStreamModalProps)
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
         <div>
           <label className="dash-label">Tournament</label>
-          <select value={tournament} onChange={(e) => setTournament(e.target.value)} className="dash-select">
+          <select
+            value={tournament}
+            onChange={(e) => setTournament(e.target.value)}
+            className="dash-select"
+          >
+            {tournaments.length === 0 && (
+              <option value="">No tournaments available</option>
+            )}
             {tournaments.map((t) => (
               <option key={t.id} value={`${t.name} S${t.season}`}>
                 {t.name} S{t.season}
@@ -122,12 +144,13 @@ export default function AddStreamModal({ onClose, onSave }: AddStreamModalProps)
         </button>
         <button
           onClick={handleSave}
-          className="text-white text-xs font-semibold uppercase tracking-widest px-5 py-2 rounded-lg transition-colors"
+          disabled={saving}
+          className="text-white text-xs font-semibold uppercase tracking-widest px-5 py-2 rounded-lg transition-colors disabled:opacity-50"
           style={{ backgroundColor: "#FF4655" }}
-          onMouseEnter={(e) => ((e.currentTarget).style.backgroundColor = "#E53E4D")}
-          onMouseLeave={(e) => ((e.currentTarget).style.backgroundColor = "#FF4655")}
+          onMouseEnter={(e) => { (e.currentTarget).style.backgroundColor = "#E53E4D"; }}
+          onMouseLeave={(e) => { (e.currentTarget).style.backgroundColor = "#FF4655"; }}
         >
-          Save
+          {saving ? "Saving…" : "Save"}
         </button>
       </div>
     </ModalBackdrop>

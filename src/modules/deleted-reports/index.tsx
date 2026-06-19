@@ -1,6 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
-import { IconSearch } from "@/components/shared/icons";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
+import { IconSearch, IconLock } from "@/components/shared/icons";
 import ModalBackdrop from "@/components/shared/modal-backdrop";
 
 // Dynamic script loader for CDN files
@@ -58,42 +67,34 @@ interface DeletionReport {
   itemType?: string;
 }
 
-const mockInitialReports: DeletionReport[] = [
-  {
-    reportId: "DR-2026-00001",
-    dateGenerated: "June 18, 2026",
-    timeGenerated: "10:20 AM",
-    totalRecordsDeleted: 3,
-    generatedBy: "Maria Santos",
-    adminName: "Maria Santos",
-    adminRole: "Administrator",
-    adminEmail: "maria@wbc.org",
-    adminAccountId: "ADM-001",
-    deletedUsers: [
-      { id: "USR-023", name: "Juan Dela Cruz", email: "juan@faith.com", role: "Gamer", statusBeforeDeletion: "active", created: "May 12, 2026" },
-      { id: "USR-024", name: "Ben Torres", email: "ben@faith.com", role: "Gamer", statusBeforeDeletion: "inactive", created: "Apr 25, 2026" },
-      { id: "USR-025", name: "Liza Cruz", email: "liza@faith.com", role: "Gamer", statusBeforeDeletion: "active", created: "May 10, 2026" }
-    ],
-    dateDeleted: "June 18, 2026",
-    timeDeleted: "10:15 AM",
-    deletedBy: "Maria Santos",
-    deletionCategory: "User Account Removal",
-    reason: "The accounts were removed due to duplicate registration and inactive participation records.",
-    activityLog: [
-      { time: "2026-06-18 10:15:02", description: "Administrator Maria Santos opened User Details." },
-      { time: "2026-06-18 10:15:08", description: "Administrator Maria Santos selected Delete User." },
-      { time: "2026-06-18 10:15:12", description: 'Deletion reason submitted: "The accounts were removed due to duplicate..."' },
-      { time: "2026-06-18 10:15:15", description: "User Accounts USR-023, USR-024, USR-025 permanently deleted." },
-      { time: "2026-06-18 10:15:15", description: "Deletion activity successfully recorded in Deleted Reports." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 18, 2026"
-  }
-];
+
+// ---------------------------------------------------------------------------
+// Access Denied guard
+// ---------------------------------------------------------------------------
+function AccessDenied() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "320px", gap: "16px", color: "var(--c-text-dim)" }}>
+      <IconLock size={40} style={{ opacity: 0.4 }} />
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--c-text)", marginBottom: "6px" }}>Access Restricted</p>
+        <p style={{ fontSize: "13px", lineHeight: 1.6 }}>Only Admins and Developers can view deletion reports.</p>
+      </div>
+    </div>
+  );
+}
 
 export default function DeletedReportsModule() {
+  // ── Defense-in-depth: admin + developer only ──
+  const { profile } = useAuth();
+  if (profile && profile.role !== "admin" && profile.role !== "developer") return <AccessDenied />;
+
+  return <DeletedReportsInner />;
+}
+
+function DeletedReportsInner() {
   const [reports, setReports] = useState<DeletionReport[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [selectedReport, setSelectedReport] = useState<DeletionReport | null>(null);
 
@@ -101,53 +102,57 @@ export default function DeletedReportsModule() {
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(5);
 
-  // Load reports from localStorage and sync schema formatting
+  // Load reports from Firestore
   useEffect(() => {
-    const saved = localStorage.getItem("vcf_deleted_reports");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const formatted = parsed.map((r: any) => {
-        const copy = { ...r };
-        if (!copy.deletedItemName) {
-          if (copy.deletedUsers && copy.deletedUsers.length > 0) {
-            if (copy.deletedUsers.length > 1) {
-              copy.deletedItemName = `${copy.deletedUsers[0].name} (+${copy.deletedUsers.length - 1})`;
-            } else {
-              copy.deletedItemName = copy.deletedUsers[0].name;
-            }
-          } else {
-            copy.deletedItemName = "Multiple Records";
-          }
-        }
-        if (!copy.itemType) {
-          copy.itemType = copy.deletedUsers && copy.deletedUsers.length > 0 ? `${copy.deletedUsers[0].role} Account` : "User Account";
-        }
-        return copy;
-      });
-      setReports(formatted);
-    } else {
-      const formatted = mockInitialReports.map((r: any) => {
-        const copy = { ...r };
-        if (!copy.deletedItemName) {
-          if (copy.deletedUsers && copy.deletedUsers.length > 0) {
-            if (copy.deletedUsers.length > 1) {
-              copy.deletedItemName = `${copy.deletedUsers[0].name} (+${copy.deletedUsers.length - 1})`;
-            } else {
-              copy.deletedItemName = copy.deletedUsers[0].name;
-            }
-          } else {
-            copy.deletedItemName = "Multiple Records";
-          }
-        }
-        if (!copy.itemType) {
-          copy.itemType = copy.deletedUsers && copy.deletedUsers.length > 0 ? `${copy.deletedUsers[0].role} Account` : "User Account";
-        }
-        return copy;
-      });
-      setReports(formatted);
-      localStorage.setItem("vcf_deleted_reports", JSON.stringify(formatted));
+    async function load() {
+      try {
+        const q = query(collection(db, "deleted_user_reports"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+        const rows: DeletionReport[] = snap.docs.map((d) => {
+          const data = d.data();
+          // Derive display fields that weren't stored pre-migration
+          const users: DeletedUserRecord[] = data.deletedUsers ?? [];
+          const deletedItemName = data.deletedItemName
+            ?? (users.length > 1
+              ? `${users[0].name} (+${users.length - 1})`
+              : users[0]?.name ?? "Unknown");
+          const itemType = data.itemType ?? "User Account";
+          const timeGenerated = data.timeGenerated
+            ?? (data.createdAt instanceof Timestamp
+              ? data.createdAt.toDate().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+              : "");
+          return {
+            reportId: data.reportId ?? d.id,
+            dateGenerated: data.dateGenerated ?? "",
+            timeGenerated,
+            totalRecordsDeleted: data.totalRecordsDeleted ?? users.length,
+            generatedBy: data.generatedBy ?? data.adminName ?? "",
+            adminName: data.adminName ?? data.generatedBy ?? "",
+            adminRole: data.adminRole ?? "",
+            adminEmail: data.adminEmail ?? "",
+            adminAccountId: data.adminAccountId ?? data.adminUid ?? "",
+            deletedUsers: users,
+            dateDeleted: data.dateDeleted ?? data.dateGenerated ?? "",
+            timeDeleted: data.timeDeleted ?? timeGenerated,
+            deletedBy: data.deletedBy ?? data.generatedBy ?? "",
+            deletionCategory: data.deletionCategory ?? "User Management",
+            reason: data.reason ?? "",
+            activityLog: data.activityLog ?? [],
+            verifiedBy: data.verifiedBy ?? "",
+            verificationDate: data.verificationDate ?? "",
+            deletedItemName,
+            itemType,
+          };
+        });
+        setReports(rows);
+      } catch (err) {
+        console.error("deleted-reports: failed to load", err);
+        setLoadError("Could not load deletion reports. Check your connection and try again.");
+      } finally {
+        setHydrated(true);
+      }
     }
-    setHydrated(true);
+    load();
   }, []);
 
   // Reset page on search changes
@@ -486,7 +491,10 @@ export default function DeletedReportsModule() {
   };
 
   if (!hydrated) {
-    return <div className="text-center py-8 text-sm" style={{ color: "var(--c-text-dim)" }}>Loading reports...</div>;
+    return <div className="text-center py-8 text-sm" style={{ color: "var(--c-text-dim)" }}>Loading reports…</div>;
+  }
+  if (loadError) {
+    return <div className="text-center py-8 text-sm" style={{ color: "#FF4655" }}>{loadError}</div>;
   }
 
   return (

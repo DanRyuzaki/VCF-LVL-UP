@@ -1,6 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
-import { IconSearch } from "@/components/shared/icons";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
+import { IconSearch, IconLock } from "@/components/shared/icons";
 import ModalBackdrop from "@/components/shared/modal-backdrop";
 
 // Dynamic script loader for CDN files
@@ -59,692 +68,34 @@ interface DeletionReport {
   itemType: string;
 }
 
-// 25 entries mock data matching Image 1 for first 5 entries
-const mockInitialReports: DeletionReport[] = [
-  {
-    reportId: "DR-001",
-    dateGenerated: "June 18, 2026",
-    timeGenerated: "10:15 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Maria Santos",
-    adminName: "Maria Santos",
-    adminRole: "Administrator",
-    adminEmail: "maria@wbc.org",
-    adminAccountId: "ADM-001",
-    deletedItemName: "Juan Dela Cruz",
-    itemType: "Gamer Account",
-    deletedUsers: [
-      { id: "USR-023", name: "Juan Dela Cruz", email: "juan@faith.com", role: "Gamer", statusBeforeDeletion: "active", created: "May 12, 2026" }
-    ],
-    dateDeleted: "June 18, 2026",
-    timeDeleted: "10:15 AM",
-    deletedBy: "Maria Santos",
-    deletionCategory: "User Account Removal",
-    reason: "The account was removed due to duplicate registration and inactive participation records.",
-    activityLog: [
-      { time: "2026-06-18 10:15:02", description: "Administrator Maria Santos opened User Details." },
-      { time: "2026-06-18 10:15:08", description: "Administrator Maria Santos selected Delete User." },
-      { time: "2026-06-18 10:15:12", description: 'Deletion reason submitted: "The account was removed due to duplicate registration..."' },
-      { time: "2026-06-18 10:15:15", description: "User Account USR-023 (Juan Dela Cruz) permanently deleted." },
-      { time: "2026-06-18 10:15:15", description: "Deletion activity successfully recorded in Deleted Reports." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 18, 2026"
-  },
-  {
-    reportId: "DR-002",
-    dateGenerated: "June 18, 2026",
-    timeGenerated: "11:40 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Ana Reyes",
-    adminName: "Ana Reyes",
-    adminRole: "Administrator",
-    adminEmail: "ana@wbc.org",
-    adminAccountId: "ADM-002",
-    deletedItemName: "Summer MLBB Tournament",
-    itemType: "Tournament",
-    deletedUsers: [
-      { id: "TRN-102", name: "Summer MLBB Tournament", email: "—", role: "Tournament", statusBeforeDeletion: "active", created: "May 01, 2026" }
-    ],
-    dateDeleted: "June 18, 2026",
-    timeDeleted: "11:40 AM",
-    deletedBy: "Ana Reyes",
-    deletionCategory: "Tournament Removal",
-    reason: "Tournament cancelled due to lack of minimum team participation requirements.",
-    activityLog: [
-      { time: "2026-06-18 11:38:10", description: "Administrator Ana Reyes viewed Tournament brackets." },
-      { time: "2026-06-18 11:39:20", description: "Administrator Ana Reyes clicked Cancel Tournament." },
-      { time: "2026-06-18 11:40:00", description: "Tournament Summer MLBB Tournament (TRN-102) permanently removed." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 18, 2026"
-  },
-  {
-    reportId: "DR-003",
-    dateGenerated: "June 18, 2026",
-    timeGenerated: "01:20 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Marco Torres",
-    adminName: "Marco Torres",
-    adminRole: "Administrator",
-    adminEmail: "marco@wbc.org",
-    adminAccountId: "ADM-003",
-    deletedItemName: "Community Livestream",
-    itemType: "Livestream",
-    deletedUsers: [
-      { id: "LVS-004", name: "Community Livestream", email: "—", role: "Livestream", statusBeforeDeletion: "active", created: "Jun 02, 2026" }
-    ],
-    dateDeleted: "June 18, 2026",
-    timeDeleted: "1:20 PM",
-    deletedBy: "Marco Torres",
-    deletionCategory: "Livestream Removal",
-    reason: "Stream link outdated and replaced by official channel broadcast.",
-    activityLog: [
-      { time: "2026-06-18 13:18:40", description: "Administrator Marco Torres accessed Livestream links." },
-      { time: "2026-06-18 13:20:00", description: "Livestream record LVS-004 permanently deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 18, 2026"
-  },
-  {
-    reportId: "DR-004",
-    dateGenerated: "June 17, 2026",
-    timeGenerated: "04:55 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Luis Fernandez",
-    adminName: "Luis Fernandez",
-    adminRole: "Administrator",
-    adminEmail: "luis@wbc.org",
-    adminAccountId: "ADM-004",
-    deletedItemName: "Team Alpha",
-    itemType: "Team",
-    deletedUsers: [
-      { id: "TEM-089", name: "Team Alpha", email: "alpha@faith.com", role: "Team", statusBeforeDeletion: "active", created: "Apr 15, 2026" }
-    ],
-    dateDeleted: "June 17, 2026",
-    timeDeleted: "04:55 PM",
-    deletedBy: "Luis Fernandez",
-    deletionCategory: "Team Disbandment",
-    reason: "Team disbanded by mutual agreement of all roster members.",
-    activityLog: [
-      { time: "2026-06-17 16:50:11", description: "Administrator Luis Fernandez inspected Team Roster." },
-      { time: "2026-06-17 16:55:00", description: "Team Alpha (TEM-089) disbanded and deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 17, 2026"
-  },
-  {
-    reportId: "DR-005",
-    dateGenerated: "June 17, 2026",
-    timeGenerated: "09:30 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Rizal Mendoza",
-    adminName: "Rizal Mendoza",
-    adminRole: "Administrator",
-    adminEmail: "rizal@wbc.org",
-    adminAccountId: "ADM-005",
-    deletedItemName: "Announcement: Server Update",
-    itemType: "Announcement",
-    deletedUsers: [
-      { id: "ANN-012", name: "Announcement: Server Update", email: "—", role: "Announcement", statusBeforeDeletion: "published", created: "Jun 10, 2026" }
-    ],
-    dateDeleted: "June 17, 2026",
-    timeDeleted: "09:30 AM",
-    deletedBy: "Rizal Mendoza",
-    deletionCategory: "Announcement Removal",
-    reason: "Announcement content was superseded by the latest maintenance schedule notification.",
-    activityLog: [
-      { time: "2026-06-17 09:28:12", description: "Administrator Rizal Mendoza accessed Announcements panel." },
-      { time: "2026-06-17 09:30:00", description: "Announcement Server Update (ANN-012) permanently deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 17, 2026"
-  },
-  {
-    reportId: "DR-006",
-    dateGenerated: "June 16, 2026",
-    timeGenerated: "02:15 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Maria Santos",
-    adminName: "Maria Santos",
-    adminRole: "Administrator",
-    adminEmail: "maria@wbc.org",
-    adminAccountId: "ADM-001",
-    deletedItemName: "Jane Smith",
-    itemType: "Gamer Account",
-    deletedUsers: [
-      { id: "USR-042", name: "Jane Smith", email: "jane@faith.com", role: "Gamer", statusBeforeDeletion: "active", created: "Feb 14, 2026" }
-    ],
-    dateDeleted: "June 16, 2026",
-    timeDeleted: "02:15 PM",
-    deletedBy: "Maria Santos",
-    deletionCategory: "User Account Removal",
-    reason: "Inappropriate language and violations of community guidelines.",
-    activityLog: [
-      { time: "2026-06-16 14:10:00", description: "Admin reviewed reports on user Jane Smith." },
-      { time: "2026-06-16 14:15:00", description: "Account USR-042 permanently deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 16, 2026"
-  },
-  {
-    reportId: "DR-007",
-    dateGenerated: "June 16, 2026",
-    timeGenerated: "10:10 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Ana Reyes",
-    adminName: "Ana Reyes",
-    adminRole: "Administrator",
-    adminEmail: "ana@wbc.org",
-    adminAccountId: "ADM-002",
-    deletedItemName: "Weekend Warmup S1",
-    itemType: "Tournament",
-    deletedUsers: [
-      { id: "TRN-105", name: "Weekend Warmup S1", email: "—", role: "Tournament", statusBeforeDeletion: "completed", created: "May 10, 2026" }
-    ],
-    dateDeleted: "June 16, 2026",
-    timeDeleted: "10:10 AM",
-    deletedBy: "Ana Reyes",
-    deletionCategory: "Tournament Removal",
-    reason: "Completed small tournament details archived and deleted to free system resources.",
-    activityLog: [
-      { time: "2026-06-16 10:05:00", description: "Admin selected database cleanup." },
-      { time: "2026-06-16 10:10:00", description: "Tournament Weekend Warmup S1 (TRN-105) deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 16, 2026"
-  },
-  {
-    reportId: "DR-008",
-    dateGenerated: "June 15, 2026",
-    timeGenerated: "03:40 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Marco Torres",
-    adminName: "Marco Torres",
-    adminRole: "Administrator",
-    adminEmail: "marco@wbc.org",
-    adminAccountId: "ADM-003",
-    deletedItemName: "Test Livestream 2",
-    itemType: "Livestream",
-    deletedUsers: [
-      { id: "LVS-009", name: "Test Livestream 2", email: "—", role: "Livestream", statusBeforeDeletion: "inactive", created: "Jun 11, 2026" }
-    ],
-    dateDeleted: "June 15, 2026",
-    timeDeleted: "03:40 PM",
-    deletedBy: "Marco Torres",
-    deletionCategory: "Livestream Removal",
-    reason: "Temporary test stream link deleted post-testing.",
-    activityLog: [
-      { time: "2026-06-15 15:35:00", description: "Developer/Admin cleanup of test nodes." },
-      { time: "2026-06-15 15:40:00", description: "Livestream record LVS-009 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 15, 2026"
-  },
-  {
-    reportId: "DR-009",
-    dateGenerated: "June 15, 2026",
-    timeGenerated: "11:20 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Luis Fernandez",
-    adminName: "Luis Fernandez",
-    adminRole: "Administrator",
-    adminEmail: "luis@wbc.org",
-    adminAccountId: "ADM-004",
-    deletedItemName: "Team Knights",
-    itemType: "Team",
-    deletedUsers: [
-      { id: "TEM-099", name: "Team Knights", email: "knights@faith.com", role: "Team", statusBeforeDeletion: "inactive", created: "Jan 12, 2026" }
-    ],
-    dateDeleted: "June 15, 2026",
-    timeDeleted: "11:20 AM",
-    deletedBy: "Luis Fernandez",
-    deletionCategory: "Team Disbandment",
-    reason: "Inactive team disbanded automatically after no matches played for 3 months.",
-    activityLog: [
-      { time: "2026-06-15 11:15:00", description: "Admin reviewed inactive entities list." },
-      { time: "2026-06-15 11:20:00", description: "Team TEM-099 disbanded and deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 15, 2026"
-  },
-  {
-    reportId: "DR-010",
-    dateGenerated: "June 15, 2026",
-    timeGenerated: "08:15 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Rizal Mendoza",
-    adminName: "Rizal Mendoza",
-    adminRole: "Administrator",
-    adminEmail: "rizal@wbc.org",
-    adminAccountId: "ADM-005",
-    deletedItemName: "Announcement: Registrations Open",
-    itemType: "Announcement",
-    deletedUsers: [
-      { id: "ANN-003", name: "Announcement: Registrations Open", email: "—", role: "Announcement", statusBeforeDeletion: "expired", created: "May 01, 2026" }
-    ],
-    dateDeleted: "June 15, 2026",
-    timeDeleted: "08:15 AM",
-    deletedBy: "Rizal Mendoza",
-    deletionCategory: "Announcement Removal",
-    reason: "Registration window closed; announcement removed from homepage billboard.",
-    activityLog: [
-      { time: "2026-06-15 08:10:00", description: "Admin removed outdated billboard items." },
-      { time: "2026-06-15 08:15:00", description: "Announcement ANN-003 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 15, 2026"
-  },
-  {
-    reportId: "DR-011",
-    dateGenerated: "June 14, 2026",
-    timeGenerated: "04:30 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Maria Santos",
-    adminName: "Maria Santos",
-    adminRole: "Administrator",
-    adminEmail: "maria@wbc.org",
-    adminAccountId: "ADM-001",
-    deletedItemName: "Alex Mercer",
-    itemType: "Gamer Account",
-    deletedUsers: [
-      { id: "USR-099", name: "Alex Mercer", email: "alex@faith.com", role: "Gamer", statusBeforeDeletion: "active", created: "Mar 11, 2026" }
-    ],
-    dateDeleted: "June 14, 2026",
-    timeDeleted: "04:30 PM",
-    deletedBy: "Maria Santos",
-    deletionCategory: "User Account Removal",
-    reason: "Requested self-deletion of personal records under GDPR compliance guidelines.",
-    activityLog: [
-      { time: "2026-06-14 16:20:00", description: "Self-deletion request processed." },
-      { time: "2026-06-14 16:30:00", description: "Account USR-099 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 14, 2026"
-  },
-  {
-    reportId: "DR-012",
-    dateGenerated: "June 14, 2026",
-    timeGenerated: "11:15 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Ana Reyes",
-    adminName: "Ana Reyes",
-    adminRole: "Administrator",
-    adminEmail: "ana@wbc.org",
-    adminAccountId: "ADM-002",
-    deletedItemName: "Showdown Arena S2",
-    itemType: "Tournament",
-    deletedUsers: [
-      { id: "TRN-112", name: "Showdown Arena S2", email: "—", role: "Tournament", statusBeforeDeletion: "registration", created: "Jun 01, 2026" }
-    ],
-    dateDeleted: "June 14, 2026",
-    timeDeleted: "11:15 AM",
-    deletedBy: "Ana Reyes",
-    deletionCategory: "Tournament Removal",
-    reason: "Duplicate registration tournament profile created by organizer mistake.",
-    activityLog: [
-      { time: "2026-06-14 11:10:00", description: "Organizer reported duplicate tournament." },
-      { time: "2026-06-14 11:15:00", description: "Tournament profile TRN-112 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 14, 2026"
-  },
-  {
-    reportId: "DR-013",
-    dateGenerated: "June 13, 2026",
-    timeGenerated: "06:10 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Marco Torres",
-    adminName: "Marco Torres",
-    adminRole: "Administrator",
-    adminEmail: "marco@wbc.org",
-    adminAccountId: "ADM-003",
-    deletedItemName: "Charity Stream MLBB",
-    itemType: "Livestream",
-    deletedUsers: [
-      { id: "LVS-012", name: "Charity Stream MLBB", email: "—", role: "Livestream", statusBeforeDeletion: "completed", created: "May 25, 2026" }
-    ],
-    dateDeleted: "June 13, 2026",
-    timeDeleted: "06:10 PM",
-    deletedBy: "Marco Torres",
-    deletionCategory: "Livestream Removal",
-    reason: "Charity stream completed and campaign concluded.",
-    activityLog: [
-      { time: "2026-06-13 18:05:00", description: "Campaign logs archived." },
-      { time: "2026-06-13 18:10:00", description: "Livestream record LVS-012 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 13, 2026"
-  },
-  {
-    reportId: "DR-014",
-    dateGenerated: "June 13, 2026",
-    timeGenerated: "01:25 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Luis Fernandez",
-    adminName: "Luis Fernandez",
-    adminRole: "Administrator",
-    adminEmail: "luis@wbc.org",
-    adminAccountId: "ADM-004",
-    deletedItemName: "Team Cyber",
-    itemType: "Team",
-    deletedUsers: [
-      { id: "TEM-022", name: "Team Cyber", email: "cyber@faith.com", role: "Team", statusBeforeDeletion: "active", created: "Mar 10, 2026" }
-    ],
-    dateDeleted: "June 13, 2026",
-    timeDeleted: "01:25 PM",
-    deletedBy: "Luis Fernandez",
-    deletionCategory: "Team Disbandment",
-    reason: "Disbanded due to roster merging into Team Alpha.",
-    activityLog: [
-      { time: "2026-06-13 13:20:00", description: "Admin approved player transfers." },
-      { time: "2026-06-13 13:25:00", description: "Team TEM-022 removed." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 13, 2026"
-  },
-  {
-    reportId: "DR-015",
-    dateGenerated: "June 13, 2026",
-    timeGenerated: "10:05 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Rizal Mendoza",
-    adminName: "Rizal Mendoza",
-    adminRole: "Administrator",
-    adminEmail: "rizal@wbc.org",
-    adminAccountId: "ADM-005",
-    deletedItemName: "Announcement: Patch Note v1.0",
-    itemType: "Announcement",
-    deletedUsers: [
-      { id: "ANN-041", name: "Announcement: Patch Note v1.0", email: "—", role: "Announcement", statusBeforeDeletion: "published", created: "May 20, 2026" }
-    ],
-    dateDeleted: "June 13, 2026",
-    timeDeleted: "10:05 AM",
-    deletedBy: "Rizal Mendoza",
-    deletionCategory: "Announcement Removal",
-    reason: "Patch note announcement replaced by v1.1 official release details.",
-    activityLog: [
-      { time: "2026-06-13 10:00:00", description: "New patch notes uploaded." },
-      { time: "2026-06-13 10:05:00", description: "Announcement ANN-041 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 13, 2026"
-  },
-  {
-    reportId: "DR-016",
-    dateGenerated: "June 12, 2026",
-    timeGenerated: "03:15 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Maria Santos",
-    adminName: "Maria Santos",
-    adminRole: "Administrator",
-    adminEmail: "maria@wbc.org",
-    adminAccountId: "ADM-001",
-    deletedItemName: "David Kim",
-    itemType: "Gamer Account",
-    deletedUsers: [
-      { id: "USR-108", name: "David Kim", email: "david@faith.com", role: "Gamer", statusBeforeDeletion: "inactive", created: "Feb 01, 2026" }
-    ],
-    dateDeleted: "June 12, 2026",
-    timeDeleted: "03:15 PM",
-    deletedBy: "Maria Santos",
-    deletionCategory: "User Account Removal",
-    reason: "Account associated with phishing attempts and spam reports.",
-    activityLog: [
-      { time: "2026-06-12 15:10:00", description: "Phishing alert triggered database scan." },
-      { time: "2026-06-12 15:15:00", description: "Account USR-108 permanently deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 12, 2026"
-  },
-  {
-    reportId: "DR-017",
-    dateGenerated: "June 12, 2026",
-    timeGenerated: "11:55 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Ana Reyes",
-    adminName: "Ana Reyes",
-    adminRole: "Administrator",
-    adminEmail: "ana@wbc.org",
-    adminAccountId: "ADM-002",
-    deletedItemName: "CODM Draft Day",
-    itemType: "Tournament",
-    deletedUsers: [
-      { id: "TRN-056", name: "CODM Draft Day", email: "—", role: "Tournament", statusBeforeDeletion: "ongoing", created: "Jun 05, 2026" }
-    ],
-    dateDeleted: "June 12, 2026",
-    timeDeleted: "11:55 AM",
-    deletedBy: "Ana Reyes",
-    deletionCategory: "Tournament Removal",
-    reason: "Tournament format changed; recreated under Team Draft rules.",
-    activityLog: [
-      { time: "2026-06-12 11:50:00", description: "Admin cancelled draft tournament." },
-      { time: "2026-06-12 11:55:00", description: "Tournament TRN-056 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 12, 2026"
-  },
-  {
-    reportId: "DR-018",
-    dateGenerated: "June 11, 2026",
-    timeGenerated: "04:50 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Marco Torres",
-    adminName: "Marco Torres",
-    adminRole: "Administrator",
-    adminEmail: "marco@wbc.org",
-    adminAccountId: "ADM-003",
-    deletedItemName: "Lobby Cast Game 3",
-    itemType: "Livestream",
-    deletedUsers: [
-      { id: "LVS-081", name: "Lobby Cast Game 3", email: "—", role: "Livestream", statusBeforeDeletion: "inactive", created: "Jun 10, 2026" }
-    ],
-    dateDeleted: "June 11, 2026",
-    timeDeleted: "04:50 PM",
-    deletedBy: "Marco Torres",
-    deletionCategory: "Livestream Removal",
-    reason: "Temporary match casting link deleted after broadcast archiving.",
-    activityLog: [
-      { time: "2026-06-11 16:45:00", description: "Broadcast ended and verified." },
-      { time: "2026-06-11 16:50:00", description: "Livestream link LVS-081 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 11, 2026"
-  },
-  {
-    reportId: "DR-019",
-    dateGenerated: "June 11, 2026",
-    timeGenerated: "02:30 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Luis Fernandez",
-    adminName: "Luis Fernandez",
-    adminRole: "Administrator",
-    adminEmail: "luis@wbc.org",
-    adminAccountId: "ADM-004",
-    deletedItemName: "Team Falcon",
-    itemType: "Team",
-    deletedUsers: [
-      { id: "TEM-004", name: "Team Falcon", email: "falcon@faith.com", role: "Team", statusBeforeDeletion: "inactive", created: "Feb 28, 2026" }
-    ],
-    dateDeleted: "June 11, 2026",
-    timeDeleted: "02:30 PM",
-    deletedBy: "Luis Fernandez",
-    deletionCategory: "Team Disbandment",
-    reason: "Roster members became inactive; team automatically disbanded.",
-    activityLog: [
-      { time: "2026-06-11 14:25:00", description: "Admin verified team player logs." },
-      { time: "2026-06-11 14:30:00", description: "Team TEM-004 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 11, 2026"
-  },
-  {
-    reportId: "DR-020",
-    dateGenerated: "June 11, 2026",
-    timeGenerated: "10:15 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Rizal Mendoza",
-    adminName: "Rizal Mendoza",
-    adminRole: "Administrator",
-    adminEmail: "rizal@wbc.org",
-    adminAccountId: "ADM-005",
-    deletedItemName: "Announcement: Server Under Attack",
-    itemType: "Announcement",
-    deletedUsers: [
-      { id: "ANN-019", name: "Announcement: Server Under Attack", email: "—", role: "Announcement", statusBeforeDeletion: "published", created: "Jun 11, 2026" }
-    ],
-    dateDeleted: "June 11, 2026",
-    timeDeleted: "10:15 AM",
-    deletedBy: "Rizal Mendoza",
-    deletionCategory: "Announcement Removal",
-    reason: "Emergency situation resolved, security warning announcement removed to avoid confusion.",
-    activityLog: [
-      { time: "2026-06-11 10:12:00", description: "Server status back to healthy." },
-      { time: "2026-06-11 10:15:00", description: "Emergency announcement ANN-019 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 11, 2026"
-  },
-  {
-    reportId: "DR-021",
-    dateGenerated: "June 10, 2026",
-    timeGenerated: "04:10 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Maria Santos",
-    adminName: "Maria Santos",
-    adminRole: "Administrator",
-    adminEmail: "maria@wbc.org",
-    adminAccountId: "ADM-001",
-    deletedItemName: "Robert Miller",
-    itemType: "Gamer Account",
-    deletedUsers: [
-      { id: "USR-125", name: "Robert Miller", email: "robert@faith.com", role: "Gamer", statusBeforeDeletion: "active", created: "Jan 19, 2026" }
-    ],
-    dateDeleted: "June 10, 2026",
-    timeDeleted: "04:10 PM",
-    deletedBy: "Maria Santos",
-    deletionCategory: "User Account Removal",
-    reason: "Duplicate registration under different email addresses detected.",
-    activityLog: [
-      { time: "2026-06-10 16:05:00", description: "Admin cross-referenced user email databases." },
-      { time: "2026-06-10 16:10:00", description: "Account USR-125 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 10, 2026"
-  },
-  {
-    reportId: "DR-022",
-    dateGenerated: "June 10, 2026",
-    timeGenerated: "01:25 PM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Ana Reyes",
-    adminName: "Ana Reyes",
-    adminRole: "Administrator",
-    adminEmail: "ana@wbc.org",
-    adminAccountId: "ADM-002",
-    deletedItemName: "Mini Championship S1",
-    itemType: "Tournament",
-    deletedUsers: [
-      { id: "TRN-032", name: "Mini Championship S1", email: "—", role: "Tournament", statusBeforeDeletion: "completed", created: "Mar 15, 2026" }
-    ],
-    dateDeleted: "June 10, 2026",
-    timeDeleted: "01:25 PM",
-    deletedBy: "Ana Reyes",
-    deletionCategory: "Tournament Removal",
-    reason: "Old completed mini tournament record deleted during routine cleanup.",
-    activityLog: [
-      { time: "2026-06-10 13:20:00", description: "Database optimization session." },
-      { time: "2026-06-10 13:25:00", description: "Tournament TRN-032 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 10, 2026"
-  },
-  {
-    reportId: "DR-023",
-    dateGenerated: "June 10, 2026",
-    timeGenerated: "11:00 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Marco Torres",
-    adminName: "Marco Torres",
-    adminRole: "Administrator",
-    adminEmail: "marco@wbc.org",
-    adminAccountId: "ADM-003",
-    deletedItemName: "Old Stream Test Link",
-    itemType: "Livestream",
-    deletedUsers: [
-      { id: "LVS-001", name: "Old Stream Test Link", email: "—", role: "Livestream", statusBeforeDeletion: "inactive", created: "May 01, 2026" }
-    ],
-    dateDeleted: "June 10, 2026",
-    timeDeleted: "11:00 AM",
-    deletedBy: "Marco Torres",
-    deletionCategory: "Livestream Removal",
-    reason: "Obsolete livestream record deleted to clean video dashboard feeds.",
-    activityLog: [
-      { time: "2026-06-10 10:55:00", description: "Admin reviewed stream widgets." },
-      { time: "2026-06-10 11:00:00", description: "Livestream link LVS-001 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 10, 2026"
-  },
-  {
-    reportId: "DR-024",
-    dateGenerated: "June 10, 2026",
-    timeGenerated: "09:40 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Luis Fernandez",
-    adminName: "Luis Fernandez",
-    adminRole: "Administrator",
-    adminEmail: "luis@wbc.org",
-    adminAccountId: "ADM-004",
-    deletedItemName: "Team Storm",
-    itemType: "Team",
-    deletedUsers: [
-      { id: "TEM-001", name: "Team Storm", email: "storm@faith.com", role: "Team", statusBeforeDeletion: "inactive", created: "Jan 10, 2026" }
-    ],
-    dateDeleted: "June 10, 2026",
-    timeDeleted: "09:40 AM",
-    deletedBy: "Luis Fernandez",
-    deletionCategory: "Team Disbandment",
-    reason: "Team members merged into other registered organizations; disbandment confirmed.",
-    activityLog: [
-      { time: "2026-06-10 09:35:00", description: "Disband request approved." },
-      { time: "2026-06-10 09:40:00", description: "Team TEM-001 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 10, 2026"
-  },
-  {
-    reportId: "DR-025",
-    dateGenerated: "June 10, 2026",
-    timeGenerated: "08:00 AM",
-    totalRecordsDeleted: 1,
-    generatedBy: "Rizal Mendoza",
-    adminName: "Rizal Mendoza",
-    adminRole: "Administrator",
-    adminEmail: "rizal@wbc.org",
-    adminAccountId: "ADM-005",
-    deletedItemName: "Announcement: Welcome Post",
-    itemType: "Announcement",
-    deletedUsers: [
-      { id: "ANN-001", name: "Announcement: Welcome Post", email: "—", role: "Announcement", statusBeforeDeletion: "expired", created: "Jan 01, 2026" }
-    ],
-    dateDeleted: "June 10, 2026",
-    timeDeleted: "08:00 AM",
-    deletedBy: "Rizal Mendoza",
-    deletionCategory: "Announcement Removal",
-    reason: "Old seasonal welcome post announcement archived and deleted.",
-    activityLog: [
-      { time: "2026-06-10 07:55:00", description: "Cleanup of expired billboard posts." },
-      { time: "2026-06-10 08:00:00", description: "Announcement ANN-001 deleted." }
-    ],
-    verifiedBy: "Developer",
-    verificationDate: "June 10, 2026"
-  }
-];
+
+// ---------------------------------------------------------------------------
+// Access Denied guard
+// ---------------------------------------------------------------------------
+function AccessDenied() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "320px", gap: "16px", color: "var(--c-text-dim)" }}>
+      <IconLock size={40} style={{ opacity: 0.4 }} />
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--c-text)", marginBottom: "6px" }}>Access Restricted</p>
+        <p style={{ fontSize: "13px", lineHeight: 1.6 }}>Only Developers can view the full archived audit log.</p>
+      </div>
+    </div>
+  );
+}
 
 export default function ArchivedSectionModule() {
+  // ── Defense-in-depth: developer only ──
+  const { profile } = useAuth();
+  if (profile && profile.role !== "developer") return <AccessDenied />;
+
+  return <ArchivedSectionInner />;
+}
+
+function ArchivedSectionInner() {
   const [reports, setReports] = useState<DeletionReport[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [selectedReport, setSelectedReport] = useState<DeletionReport | null>(null);
 
   // Pagination states
@@ -752,34 +103,65 @@ export default function ArchivedSectionModule() {
   const [entriesPerPage, setEntriesPerPage] = useState(5);
 
   useEffect(() => {
-    // Attempt to read from localStorage or set default
-    const saved = localStorage.getItem("vcf_deleted_reports");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Map existing records to the schema if they don't have deletedItemName/itemType fields
-      const formatted = parsed.map((r: any) => {
-        if (!r.deletedItemName) {
-          r.deletedItemName = r.deletedUsers && r.deletedUsers.length > 0 ? r.deletedUsers[0].name : "Multiple Records";
-        }
-        if (!r.itemType) {
-          r.itemType = r.deletedUsers && r.deletedUsers.length > 0 ? `${r.deletedUsers[0].role} Account` : "User Account";
-        }
-        return r;
-      });
-      setReports(formatted);
-    } else {
-      setReports(mockInitialReports);
-      localStorage.setItem("vcf_deleted_reports", JSON.stringify(mockInitialReports));
+    async function load() {
+      try {
+        const q = query(collection(db, "deleted_user_reports"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+        const rows: DeletionReport[] = snap.docs.map((d) => {
+          const data = d.data();
+          const users: DeletedUserRecord[] = data.deletedUsers ?? [];
+          const deletedItemName = data.deletedItemName
+            ?? (users.length > 1
+              ? `${users[0].name} (+${users.length - 1})`
+              : users[0]?.name ?? "Unknown");
+          const itemType = data.itemType ?? "User Account";
+          const timeGenerated = data.timeGenerated
+            ?? (data.createdAt instanceof Timestamp
+              ? data.createdAt.toDate().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+              : "");
+          return {
+            reportId: data.reportId ?? d.id,
+            dateGenerated: data.dateGenerated ?? "",
+            timeGenerated,
+            totalRecordsDeleted: data.totalRecordsDeleted ?? users.length,
+            generatedBy: data.generatedBy ?? data.adminName ?? "",
+            adminName: data.adminName ?? data.generatedBy ?? "",
+            adminRole: data.adminRole ?? "",
+            adminEmail: data.adminEmail ?? "",
+            adminAccountId: data.adminAccountId ?? data.adminUid ?? "",
+            deletedUsers: users,
+            dateDeleted: data.dateDeleted ?? data.dateGenerated ?? "",
+            timeDeleted: data.timeDeleted ?? timeGenerated,
+            deletedBy: data.deletedBy ?? data.generatedBy ?? "",
+            deletionCategory: data.deletionCategory ?? "User Management",
+            reason: data.reason ?? "",
+            activityLog: data.activityLog ?? [],
+            verifiedBy: data.verifiedBy ?? "",
+            verificationDate: data.verificationDate ?? "",
+            deletedItemName,
+            itemType,
+          };
+        });
+        setReports(rows);
+      } catch (err) {
+        console.error("archived-section: failed to load", err);
+        setLoadError("Could not load archived records. Check your connection and try again.");
+      } finally {
+        setHydrated(true);
+      }
     }
-    setHydrated(true);
+    load();
   }, []);
 
   if (!hydrated) {
     return (
       <div className="text-center py-8 text-sm" style={{ color: "var(--c-text-dim)" }}>
-        Loading archived activities...
+        Loading archived activities…
       </div>
     );
+  }
+  if (loadError) {
+    return <div className="text-center py-8 text-sm" style={{ color: "#FF4655" }}>{loadError}</div>;
   }
 
   // Pagination calculations

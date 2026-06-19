@@ -1,5 +1,20 @@
 "use client";
+// src/modules/user-management/index.tsx
 import { useState, useEffect } from "react";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  getDocs,
+  query,
+  orderBy,
+  serverTimestamp,
+  Timestamp,
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
 import { IconSearch, IconPlus } from "@/components/shared/icons";
 import AddUserModal from "@/modules/user-management/add-user-modal";
 import AddAdminModal from "@/modules/user-management/add-admin-modal";
@@ -7,20 +22,46 @@ import ViewUserModal from "@/modules/user-management/view-user-modal";
 import DeleteConfirmModal from "@/modules/user-management/delete-confirm-modal";
 import ModalBackdrop from "@/components/shared/modal-backdrop";
 
-const initialUsers = [
-  { id: "usr_001", name: "Marco Reyes",    email: "marco@faith.com",  role: "Organizer", status: "active",   created: "May 1",  lastLogin: "Jun 12" },
-  { id: "usr_002", name: "John Dela Cruz", email: "john@faith.com",   role: "Gamer",     status: "active",   created: "May 3",  lastLogin: "Jun 11" },
-  { id: "usr_003", name: "Ana Santos",     email: "ana@faith.com",    role: "Admin",     status: "active",   created: "Apr 20", lastLogin: "Jun 12" },
-  { id: "usr_004", name: "Ben Torres",     email: "ben@faith.com",    role: "Gamer",     status: "inactive", created: "Apr 25", lastLogin: "May 30" },
-  { id: "usr_005", name: "Liza Cruz",      email: "liza@faith.com",   role: "Gamer",     status: "active",   created: "May 10", lastLogin: "Jun 10" },
-];
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+interface UserRow {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  created: string;
+  lastLogin: string;
+}
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 const roleBadge = (role: string) => {
   if (role === "Admin")     return "bg-[#FF4655]/20 text-[#FF4655]";
   if (role === "Organizer") return "bg-[#8B5CF6]/20 text-[#8B5CF6]";
   return "bg-[#00F5D4]/15 text-[#00F5D4]";
 };
 
+function formatTimestamp(val: unknown): string {
+  if (!val) return "—";
+  if (val instanceof Timestamp) {
+    return val.toDate().toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+  }
+  if (typeof val === "string") return val;
+  return "—";
+}
+
+function parseDateStr(dateStr: string): number {
+  if (!dateStr || dateStr === "—") return 0;
+  const ts = Date.parse(`${dateStr}, ${new Date().getFullYear()}`);
+  return isNaN(ts) ? 0 : ts;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 interface Props {
   context?: "admin" | "developer";
   onNavigate?: (section: string) => void;
@@ -28,188 +69,204 @@ interface Props {
 
 export default function UserManagementModule({ context = "admin", onNavigate }: Props) {
   const isDev = context === "developer";
+  const { profile: currentUserProfile } = useAuth();
+
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  // UI state
   const [search, setSearch] = useState("");
   const [filterBy, setFilterBy] = useState("Name");
   const [sortBy, setSortBy] = useState("name_asc");
-  const [users, setUsers] = useState(initialUsers);
-  const [hydrated, setHydrated] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [viewUser, setViewUser] = useState<(typeof initialUsers)[0] | null>(null);
-  
-  // Selection mode states
+  const [viewUser, setViewUser] = useState<UserRow | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  
-  // Deletion process states
-  const [usersToDelete, setUsersToDelete] = useState<(typeof initialUsers)[0][] | null>(null);
+  const [usersToDelete, setUsersToDelete] = useState<UserRow[] | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Hydration effect to load users from localStorage
+  // ------------------------------------------------------------------
+  // Load users from Firestore on mount
+  // ------------------------------------------------------------------
   useEffect(() => {
-    const saved = localStorage.getItem("vcf_users");
-    if (saved) {
-      setUsers(JSON.parse(saved));
-    } else {
-      localStorage.setItem("vcf_users", JSON.stringify(initialUsers));
+    async function loadUsers() {
+      try {
+        const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+        const rows: UserRow[] = snap.docs.map((d) => {
+          const data = d.data();
+          // Capitalise role for display (stored lowercase in Firestore)
+          const roleDisplay =
+            data.role === "admin"     ? "Admin"
+            : data.role === "organizer" ? "Organizer"
+            : data.role === "gamer"     ? "Gamer"
+            : data.role === "developer" ? "Developer"
+            : data.role ?? "—";
+
+          const mi = data.middleInitial ? ` ${data.middleInitial}.` : "";
+          return {
+            id: d.id,
+            name: `${data.firstName ?? ""}${mi} ${data.lastName ?? ""}`.trim(),
+            email: data.email ?? "",
+            role: roleDisplay,
+            status: data.status ?? "inactive",
+            created: formatTimestamp(data.createdAt),
+            lastLogin: formatTimestamp(data.lastLogin),
+          };
+        });
+        setUsers(rows);
+      } catch (err) {
+        console.error("Failed to load users from Firestore:", err);
+        // Fall back to empty list — don't crash the UI
+      } finally {
+        setHydrated(true);
+      }
     }
-    setHydrated(true);
+    loadUsers();
   }, []);
 
-  // Sync users to localStorage on update
-  const saveUsers = (updatedList: typeof users) => {
-    setUsers(updatedList);
-    localStorage.setItem("vcf_users", JSON.stringify(updatedList));
-  };
+  // ------------------------------------------------------------------
+  // Create user — Firebase Auth + Firestore write
+  // ------------------------------------------------------------------
+  const handleAddUser = async (data: Record<string, string>) => {
+    setSaving(true);
+    setSaveError("");
 
-  const filtered = users.filter((u) => {
-    const query = search.toLowerCase();
-    if (!query) return true;
-    if (filterBy === "Name") {
-      return u.name.toLowerCase().includes(query);
-    } else if (filterBy === "Email Address") {
-      return u.email.toLowerCase().includes(query);
-    } else if (filterBy === "Role") {
-      return u.role.toLowerCase().includes(query);
-    }
-    return true;
-  });
+    try {
+      // 1. Create Firebase Auth account
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        data.email,
+        data.tempPassword
+      );
+      const uid = credential.user.uid;
 
-  const parseDateStr = (dateStr: string) => {
-    if (!dateStr || dateStr === "—") return 0;
-    const currentYear = new Date().getFullYear();
-    const timestamp = Date.parse(`${dateStr}, ${currentYear}`);
-    return isNaN(timestamp) ? 0 : timestamp;
-  };
+      // 2. Determine the role string (lowercase for Firestore)
+      const roleMap: Record<string, string> = {
+        Organizer: "organizer",
+        Gamer: "gamer",
+        Admin: "admin",
+      };
+      const roleKey = roleMap[data.role] ?? "gamer";
 
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === "name_asc") {
-      return a.name.localeCompare(b.name);
-    }
-    if (sortBy === "name_desc") {
-      return b.name.localeCompare(a.name);
-    }
-    if (sortBy === "created_newest") {
-      return parseDateStr(b.created) - parseDateStr(a.created);
-    }
-    if (sortBy === "created_oldest") {
-      return parseDateStr(a.created) - parseDateStr(b.created);
-    }
-    if (sortBy === "login_newest") {
-      return parseDateStr(b.lastLogin) - parseDateStr(a.lastLogin);
-    }
-    if (sortBy === "login_oldest") {
-      return parseDateStr(a.lastLogin) - parseDateStr(b.lastLogin);
-    }
-    if (sortBy === "status_active") {
-      const statusA = a.status.toLowerCase() === "active" ? 1 : 0;
-      const statusB = b.status.toLowerCase() === "active" ? 1 : 0;
-      return statusB - statusA;
-    }
-    if (sortBy === "status_inactive") {
-      const statusA = a.status.toLowerCase() === "active" ? 1 : 0;
-      const statusB = b.status.toLowerCase() === "active" ? 1 : 0;
-      return statusA - statusB;
-    }
-    return 0;
-  });
+      // 3. Write Firestore user document
+      const userDoc: Record<string, unknown> = {
+        uid,
+        email: data.email,
+        firstName: data.firstName,
+        middleInitial: data.middleInitial || null,
+        lastName: data.lastName,
+        role: roleKey,
+        gamerType: roleKey === "gamer" ? "free_agent" : null,
+        teamId: null,
+        inGameName: null,
+        phone: null,
+        status: (data.status ?? "Active").toLowerCase(),
+        createdAt: serverTimestamp(),
+        lastLogin: null,
+        createdBy: currentUserProfile?.uid ?? null,
+      };
 
-  const handleAddUser = (data: Record<string, string>) => {
-    const newId = `usr_${String(users.length + 1).padStart(3, "0")}`;
-    const mi = data.middleInitial ? ` ${data.middleInitial}.` : "";
-    const updated = [
-      ...users,
-      {
-        id: newId,
+      await setDoc(doc(db, "users", uid), userDoc);
+
+      // 4. Optimistically add to local list
+      const mi = data.middleInitial ? ` ${data.middleInitial}.` : "";
+      const newRow: UserRow = {
+        id: uid,
         name: `${data.firstName}${mi} ${data.lastName}`,
         email: data.email,
-        role: data.role || "Admin",
-        status: data.status?.toLowerCase() || "active",
+        role: data.role,
+        status: (data.status ?? "Active").toLowerCase(),
         created: new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric" }),
         lastLogin: "—",
-      },
-    ];
-    saveUsers(updated);
+      };
+      setUsers((prev) => [newRow, ...prev]);
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? "";
+      if (code === "auth/email-already-in-use") {
+        setSaveError("That email is already registered.");
+      } else if (code === "auth/weak-password") {
+        setSaveError("Password must be at least 6 characters.");
+      } else {
+        setSaveError("Failed to create user. Please try again.");
+        console.error(err);
+      }
+      return; // don't close modal — let the user fix it
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDeleteConfirm = (reason: string) => {
+  // ------------------------------------------------------------------
+  // Delete — writes deletion report to Firestore, removes from local list
+  // ------------------------------------------------------------------
+  const handleDeleteConfirm = async (reason: string) => {
     if (!usersToDelete || usersToDelete.length === 0) return;
-    const idsToDelete = usersToDelete.map(u => u.id);
-    const updated = users.filter((u) => !idsToDelete.includes(u.id));
-    saveUsers(updated);
 
-    // Save deletion report to localStorage
-    const savedReports = localStorage.getItem("vcf_deleted_reports");
-    const reports = savedReports ? JSON.parse(savedReports) : [];
-    
-    // Auto-increment sequence number
-    const year = new Date().getFullYear();
-    const nextSeq = String(reports.length + 1).padStart(5, "0");
-    const reportId = `DR-${year}-${nextSeq}`;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const adminName = currentUserProfile
+      ? `${currentUserProfile.firstName}${currentUserProfile.middleInitial ? ` ${currentUserProfile.middleInitial}.` : ""} ${currentUserProfile.lastName}`.trim()
+      : "Admin";
 
-    // Format current date and time
-    const dateStr = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-    
-    // Format AM/PM manually or using system
-    const formatTime = () => {
-      const d = new Date();
-      let hours = d.getHours();
-      const minutes = String(d.getMinutes()).padStart(2, "0");
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
-      return `${hours}:${minutes} ${ampm}`;
-    };
-    const timeStr = formatTime();
+    // 1. Delete each user's Firestore profile doc (client SDK; Auth account requires Admin SDK)
+    const idsToDelete = usersToDelete.map((u) => u.id);
+    await Promise.allSettled(
+      idsToDelete.map((uid) => deleteDoc(doc(db, "users", uid)))
+    );
+    // NOTE: Firebase Auth account is NOT deleted here — the client SDK cannot delete
+    // another user's Auth record. A Cloud Function triggered on users/{uid} deletion,
+    // or an Admin SDK call from a secure backend, is required for full account removal.
 
-    // Construct activity log timestamps
-    const getLogTime = (offsetSec = 0) => {
-      const d = new Date(Date.now() - offsetSec * 1000);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      const hh = String(d.getHours()).padStart(2, "0");
-      const min = String(d.getMinutes()).padStart(2, "0");
-      const sec = String(d.getSeconds()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd} ${hh}:${min}:${sec}`;
-    };
+    // Optimistically remove from local list
+    setUsers((prev) => prev.filter((u) => !idsToDelete.includes(u.id)));
 
-    const newReport = {
-      reportId,
-      dateGenerated: dateStr,
-      timeGenerated: timeStr,
-      totalRecordsDeleted: usersToDelete.length,
-      generatedBy: "Maria Santos", // Mocked Admin Name
-      adminName: "Maria Santos",
-      adminRole: "Administrator",
-      adminEmail: "maria@wbc.org",
-      adminAccountId: "ADM-001",
-      deletedUsers: usersToDelete.map(u => ({
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        role: u.role,
-        statusBeforeDeletion: u.status,
-        created: u.created,
-      })),
-      dateDeleted: dateStr,
-      timeDeleted: timeStr,
-      deletedBy: "Maria Santos",
-      deletionCategory: "User Account Removal",
-      reason: reason,
-      activityLog: [
-        { time: getLogTime(13), description: `Administrator Maria Santos opened User Details.` },
-        { time: getLogTime(7), description: `Administrator Maria Santos selected ${usersToDelete.length > 1 ? "multiple users" : "Delete User"}.` },
-        { time: getLogTime(3), description: `Deletion reason submitted: "${reason}"` },
-        { time: getLogTime(0), description: `User Account(s) ${usersToDelete.map(u => `${u.id} (${u.name})`).join(", ")} permanently deleted.` },
-        { time: getLogTime(0), description: `Deletion activity successfully recorded in Deleted Reports.` },
-      ],
-      verifiedBy: "Developer",
-      verificationDate: dateStr,
-    };
+    // 2. Write rich deletion report to Firestore (matches deleted-reports/archived-section schema)
+    try {
+      const year = now.getFullYear();
+      const reportId = `DR-${year}-${Date.now()}`;
+      const reportDoc = {
+        reportId,
+        // Display fields used by the table + detail modal
+        dateGenerated: dateStr,
+        timeGenerated: timeStr,
+        dateDeleted: dateStr,
+        timeDeleted: timeStr,
+        totalRecordsDeleted: usersToDelete.length,
+        // Who did the deletion
+        generatedBy: adminName,
+        deletedBy: adminName,
+        adminName,
+        adminAccountId: currentUserProfile?.uid ?? "",
+        adminRole: currentUserProfile?.role ?? "admin",
+        adminEmail: currentUserProfile?.email ?? "",
+        // What was deleted
+        itemType: "User Account",
+        deletedItemName: usersToDelete.length === 1
+          ? usersToDelete[0].name
+          : `${usersToDelete.length} users`,
+        deletionCategory: "User Management",
+        // The deleted users array
+        deletedUsers: usersToDelete.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          statusBeforeDeletion: u.status,
+          created: u.created,
+        })),
+        reason,
+        createdAt: serverTimestamp(),
+      };
+      await setDoc(doc(db, "deleted_user_reports", reportId), reportDoc);
+    } catch (err) {
+      console.error("Failed to write deletion report:", err);
+      // Non-blocking — user already removed from local list
+    }
 
-    localStorage.setItem("vcf_deleted_reports", JSON.stringify([newReport, ...reports]));
-
-    // Reset selection and deletion modal state
     setSelectionMode(false);
     setSelectedUserIds([]);
     setUsersToDelete(null);
@@ -217,20 +274,50 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
     setShowSuccessModal(true);
   };
 
-  /* Table headers differ based on context */
+  // ------------------------------------------------------------------
+  // Filter + sort
+  // ------------------------------------------------------------------
+  const filtered = users.filter((u) => {
+    const query = search.toLowerCase();
+    if (!query) return true;
+    if (filterBy === "Name")          return u.name.toLowerCase().includes(query);
+    if (filterBy === "Email Address") return u.email.toLowerCase().includes(query);
+    if (filterBy === "Role")          return u.role.toLowerCase().includes(query);
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "name_asc")        return a.name.localeCompare(b.name);
+    if (sortBy === "name_desc")       return b.name.localeCompare(a.name);
+    if (sortBy === "created_newest")  return parseDateStr(b.created) - parseDateStr(a.created);
+    if (sortBy === "created_oldest")  return parseDateStr(a.created) - parseDateStr(b.created);
+    if (sortBy === "login_newest")    return parseDateStr(b.lastLogin) - parseDateStr(a.lastLogin);
+    if (sortBy === "login_oldest")    return parseDateStr(a.lastLogin) - parseDateStr(b.lastLogin);
+    if (sortBy === "status_active")   return (b.status === "active" ? 1 : 0) - (a.status === "active" ? 1 : 0);
+    if (sortBy === "status_inactive") return (a.status === "active" ? 1 : 0) - (b.status === "active" ? 1 : 0);
+    return 0;
+  });
+
   const headers = isDev
     ? ["UID", "Name", "Email", "Role", "Status", "Created", "Last Login", "Actions"]
     : ["Name", "Email", "Role", "Status", "Created", "Last Login", "Actions"];
 
   if (!hydrated) {
-    return <div className="text-center py-8 text-sm" style={{ color: "var(--c-text-dim)" }}>Loading users...</div>;
+    return <div className="text-center py-8 text-sm" style={{ color: "var(--c-text-dim)" }}>Loading users…</div>;
   }
 
   return (
     <div>
-      {/* Top Header Row - Outside of Table/Filter Controls */}
+      {/* Save error banner */}
+      {saveError && (
+        <div style={{ marginBottom: "12px", padding: "10px 14px", backgroundColor: "rgba(255,70,85,0.08)", border: "1px solid rgba(255,70,85,0.2)", borderRadius: "8px", fontSize: "12px", color: "#FF4655" }}>
+          {saveError}
+          <button onClick={() => setSaveError("")} style={{ float: "right", background: "none", border: "none", color: "#FF4655", cursor: "pointer" }}>✕</button>
+        </div>
+      )}
+
+      {/* Top Header Row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        {/* Left side: Selection status */}
         <div>
           {selectionMode && selectedUserIds.length > 0 && (
             <span style={{ color: "var(--c-text-dim)", fontSize: "13px" }}>
@@ -239,86 +326,45 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
           )}
         </div>
 
-        {/* Right side: Add and Multi-delete action buttons */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {selectionMode && (
             <>
               <button
                 onClick={() => {
                   if (selectedUserIds.length === 0) return;
-                  const items = users.filter((u) => selectedUserIds.includes(u.id));
-                  setUsersToDelete(items);
+                  setUsersToDelete(users.filter((u) => selectedUserIds.includes(u.id)));
                 }}
                 disabled={selectedUserIds.length === 0}
                 style={{
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  height: "38px",
-                  padding: "0 16px",
-                  borderRadius: "6px",
+                  fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
+                  height: "38px", padding: "0 16px", borderRadius: "6px",
                   backgroundColor: selectedUserIds.length > 0 ? "#FF4655" : "rgba(255, 70, 85, 0.05)",
                   border: selectedUserIds.length > 0 ? "1.5px solid #FF4655" : "1.5px solid var(--c-border)",
                   color: selectedUserIds.length > 0 ? "#FFFFFF" : "var(--c-text-dim)",
-                  cursor: selectedUserIds.length > 0 ? "pointer" : "not-allowed",
-                  transition: "all 0.15s ease",
+                  cursor: selectedUserIds.length > 0 ? "pointer" : "not-allowed", transition: "all 0.15s ease",
                 }}
-                title="Delete Selected Users"
-              >
-                Delete
-              </button>
+              >Delete</button>
               <button
-                onClick={() => {
-                  setSelectionMode(false);
-                  setSelectedUserIds([]);
-                }}
+                onClick={() => { setSelectionMode(false); setSelectedUserIds([]); }}
                 style={{
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  height: "38px",
-                  padding: "0 16px",
-                  borderRadius: "6px",
-                  backgroundColor: "transparent",
-                  border: "1.5px solid var(--c-border)",
-                  color: "var(--c-text-dim)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
+                  fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
+                  height: "38px", padding: "0 16px", borderRadius: "6px",
+                  backgroundColor: "transparent", border: "1.5px solid var(--c-border)",
+                  color: "var(--c-text-dim)", cursor: "pointer", transition: "all 0.15s ease",
                 }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.color = "var(--c-text)";
-                  (e.currentTarget as HTMLElement).style.borderColor = "var(--c-text-dim)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.color = "var(--c-text-dim)";
-                  (e.currentTarget as HTMLElement).style.borderColor = "var(--c-border)";
-                }}
-              >
-                Cancel
-              </button>
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--c-text)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--c-text-dim)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--c-text-dim)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--c-border)"; }}
+              >Cancel</button>
             </>
           )}
 
-          {/* Add User/Admin Button */}
           <button
             onClick={() => setShowAddModal(true)}
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              backgroundColor: "#FF4655",
-              color: "#FFFFFF",
-              fontSize: "12px",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              height: "38px",
-              padding: "0 16px",
-              borderRadius: "6px",
-              border: "none",
-              cursor: "pointer",
+              display: "flex", alignItems: "center", gap: "6px",
+              backgroundColor: "#FF4655", color: "#FFFFFF",
+              fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em",
+              height: "38px", padding: "0 16px", borderRadius: "6px", border: "none", cursor: "pointer",
               transition: "background-color 0.15s ease",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#E53E4D")}
@@ -329,97 +375,40 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
         </div>
       </div>
 
+      {/* Filter / Search / Sort bar */}
       <div className="flex flex-wrap items-center gap-4 mb-5 p-3.5 rounded-lg" style={{ border: "1px solid rgba(255, 255, 255, 0.08)", backgroundColor: "rgba(20, 20, 20, 0.6)", backdropFilter: "blur(10px)" }}>
-        {/* Filter Dropdown */}
+        {/* Filter by */}
         <div className="flex items-center gap-2.5">
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", lineHeight: "1.1", color: "var(--c-text-dim)", fontSize: "10px", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}>
-            <span>Filter</span>
-            <span>By:</span>
+            <span>Filter</span><span>By:</span>
           </div>
-          <select
-            value={filterBy}
-            onChange={(e) => {
-              setFilterBy(e.target.value);
-              setSearch(""); // clear search on filter criteria change
-            }}
-            className="dash-select"
-            style={{
-              padding: "0 32px 0 12px",
-              backgroundColor: "rgba(0, 0, 0, 0.45)",
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-              borderRadius: "6px",
-              color: "var(--c-text)",
-              fontSize: "13px",
-              outline: "none",
-              cursor: "pointer",
-              height: "38px",
-              minWidth: "130px",
-              appearance: "none",
-              backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")`,
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 10px center",
-            }}
-          >
+          <select value={filterBy} onChange={(e) => { setFilterBy(e.target.value); setSearch(""); }} className="dash-select"
+            style={{ padding: "0 32px 0 12px", backgroundColor: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", color: "var(--c-text)", fontSize: "13px", outline: "none", cursor: "pointer", height: "38px", minWidth: "130px", appearance: "none", backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
             <option value="Name">Name</option>
             <option value="Email Address">Email Address</option>
             <option value="Role">Role</option>
           </select>
         </div>
 
-        {/* Search Input */}
+        {/* Search */}
         <div className="flex items-center gap-2.5">
           <span style={{ color: "var(--c-text-dim)", fontSize: "10px", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}>Search:</span>
           <div className="relative">
             <IconSearch size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--c-text-dim)" }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${filterBy.toLowerCase()}...`}
-              style={{
-                paddingLeft: "36px",
-                paddingRight: "12px",
-                height: "38px",
-                width: "220px",
-                fontSize: "13px",
-                backgroundColor: "rgba(0, 0, 0, 0.45)",
-                border: "1px solid rgba(255, 255, 255, 0.12)",
-                borderRadius: "6px",
-                color: "var(--c-text)",
-                outline: "none",
-              }}
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search ${filterBy.toLowerCase()}...`}
+              style={{ paddingLeft: "36px", paddingRight: "12px", height: "38px", width: "220px", fontSize: "13px", backgroundColor: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", color: "var(--c-text)", outline: "none" }}
               onFocus={(e) => (e.currentTarget.style.borderColor = "var(--c-accent)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.12)")}
-            />
+              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")} />
           </div>
         </div>
 
-        {/* Sorting Dropdown */}
+        {/* Sort by */}
         <div className="flex items-center gap-2.5">
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", lineHeight: "1.1", color: "var(--c-text-dim)", fontSize: "10px", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}>
-            <span>Sort</span>
-            <span>By:</span>
+            <span>Sort</span><span>By:</span>
           </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="dash-select"
-            style={{
-              padding: "0 32px 0 12px",
-              backgroundColor: "rgba(0, 0, 0, 0.45)",
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-              borderRadius: "6px",
-              color: "var(--c-text)",
-              fontSize: "13px",
-              outline: "none",
-              cursor: "pointer",
-              height: "38px",
-              minWidth: "160px",
-              appearance: "none",
-              backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")`,
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 10px center",
-            }}
-          >
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="dash-select"
+            style={{ padding: "0 32px 0 12px", backgroundColor: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", color: "var(--c-text)", fontSize: "13px", outline: "none", cursor: "pointer", height: "38px", minWidth: "160px", appearance: "none", backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
             <option value="name_asc">Name (A–Z)</option>
             <option value="name_desc">Name (Z–A)</option>
             <option value="created_newest">Date Created (Newest)</option>
@@ -431,56 +420,29 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
           </select>
         </div>
 
-        {/* Select All / Deselect All Button (visible contextually or for all role dashboard checks) */}
+        {/* Select All */}
         <button
           onClick={() => {
             const allSelected = sorted.every((u) => selectedUserIds.includes(u.id));
-            if (!selectionMode) {
-              setSelectionMode(true);
-              setSelectedUserIds(sorted.map((u) => u.id));
-            } else {
-              if (allSelected) {
-                setSelectionMode(false);
-                setSelectedUserIds([]);
-              } else {
-                setSelectedUserIds(sorted.map((u) => u.id));
-              }
-            }
+            if (!selectionMode) { setSelectionMode(true); setSelectedUserIds(sorted.map((u) => u.id)); }
+            else if (allSelected) { setSelectionMode(false); setSelectedUserIds([]); }
+            else { setSelectedUserIds(sorted.map((u) => u.id)); }
           }}
-          style={{
-            fontSize: "12px",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-            height: "38px",
-            padding: "0 16px",
-            borderRadius: "6px",
-            border: "1.5px solid #00D4FF",
-            backgroundColor: selectionMode && sorted.every((u) => selectedUserIds.includes(u.id)) ? "rgba(0, 212, 255, 0.15)" : "transparent",
-            color: "#00D4FF",
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-            marginLeft: "auto"
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "rgba(0, 212, 255, 0.2)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = selectionMode && sorted.every((u) => selectedUserIds.includes(u.id)) ? "rgba(0, 212, 255, 0.15)" : "transparent";
-          }}
+          style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", height: "38px", padding: "0 16px", borderRadius: "6px", border: "1.5px solid #00D4FF", backgroundColor: selectionMode && sorted.every((u) => selectedUserIds.includes(u.id)) ? "rgba(0,212,255,0.15)" : "transparent", color: "#00D4FF", cursor: "pointer", transition: "all 0.15s ease", marginLeft: "auto" }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(0,212,255,0.2)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selectionMode && sorted.every((u) => selectedUserIds.includes(u.id)) ? "rgba(0,212,255,0.15)" : "transparent"; }}
         >
           {selectionMode && sorted.every((u) => selectedUserIds.includes(u.id)) ? "Deselect All" : "Select All"}
         </button>
       </div>
 
+      {/* Table */}
       <div className="dash-table-wrap">
         <table className="w-full border-collapse">
           <thead className="dash-thead">
             <tr>
               {selectionMode && <th className="dash-th" style={{ width: "40px", paddingRight: 0 }}></th>}
-              {headers.map((h) => (
-                <th key={h} className="dash-th">{h}</th>
-              ))}
+              {headers.map((h) => <th key={h} className="dash-th">{h}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -490,43 +452,22 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
                 <tr key={u.id} className="dash-tr">
                   {selectionMode && (
                     <td className="dash-td" style={{ width: "40px", paddingRight: 0 }}>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {
-                          setSelectedUserIds((prev) =>
-                            prev.includes(u.id)
-                              ? prev.filter((id) => id !== u.id)
-                              : [...prev, u.id]
-                          );
-                        }}
-                        style={{
-                          width: "16px",
-                          height: "16px",
-                          cursor: "pointer",
-                          accentColor: "#FFC107", // In Yellow selection indicators
-                        }}
-                      />
+                      <input type="checkbox" checked={isSelected}
+                        onChange={() => setSelectedUserIds((prev) => prev.includes(u.id) ? prev.filter((id) => id !== u.id) : [...prev, u.id])}
+                        style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#FFC107" }} />
                     </td>
                   )}
-                  {isDev && <td className="dash-td-dim font-mono">{u.id}</td>}
+                  {isDev && <td className="dash-td-dim font-mono" style={{ fontSize: "10px", maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.id}</td>}
                   <td className="dash-td font-medium">{u.name}</td>
                   <td className="dash-td-muted">{u.email}</td>
-                  <td className="dash-td">
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${roleBadge(u.role)}`}>{u.role}</span>
-                  </td>
+                  <td className="dash-td"><span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${roleBadge(u.role)}`}>{u.role}</span></td>
                   <td className="dash-td">
                     <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${u.status === "active" ? "bg-[#00F5D4]/15 text-[#00F5D4]" : u.status === "suspended" ? "bg-[#FF4655]/15 text-[#FF4655]" : ""}`} style={u.status !== "active" && u.status !== "suspended" ? { backgroundColor: "var(--c-surface3)", color: "var(--c-text-dim)" } : {}}>{u.status}</span>
                   </td>
                   <td className="dash-td-dim">{u.created}</td>
                   <td className="dash-td-dim">{u.lastLogin}</td>
                   <td className="dash-td">
-                    <button
-                      onClick={() => setViewUser(u)}
-                      className="dash-btn-ghost text-xs px-3 py-1 rounded"
-                    >
-                      View
-                    </button>
+                    <button onClick={() => setViewUser(u)} className="dash-btn-ghost text-xs px-3 py-1 rounded">View</button>
                   </td>
                 </tr>
               );
@@ -535,77 +476,43 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
         </table>
       </div>
 
-      {/* Add User / Add Admin Modal */}
+      {/* Modals */}
       {showAddModal && (
         isDev
           ? <AddAdminModal onClose={() => setShowAddModal(false)} onSave={handleAddUser} />
-          : <AddUserModal onClose={() => setShowAddModal(false)} onSave={handleAddUser} />
+          : <AddUserModal onClose={() => setShowAddModal(false)} onSave={handleAddUser} saving={saving} />
       )}
 
-      {/* View User Modal */}
       {viewUser && !usersToDelete && (
-        <ViewUserModal
-          user={viewUser}
-          context={context}
-          onClose={() => setViewUser(null)}
-          onDelete={() => setUsersToDelete([viewUser])}
-        />
+        <ViewUserModal user={viewUser} context={context} onClose={() => setViewUser(null)} onDelete={() => setUsersToDelete([viewUser])} />
       )}
 
-      {/* Delete Confirmation Modal */}
       {usersToDelete && (
-        <DeleteConfirmModal
-          usersToDelete={usersToDelete}
-          onClose={() => setUsersToDelete(null)}
-          onConfirm={handleDeleteConfirm}
-        />
+        <DeleteConfirmModal usersToDelete={usersToDelete} onClose={() => setUsersToDelete(null)} onConfirm={handleDeleteConfirm} />
       )}
 
-      {/* Success Modal */}
       {showSuccessModal && (
         <ModalBackdrop onClose={() => setShowSuccessModal(false)} title="Deletion Successful" maxWidth="440px">
           <div style={{ textAlign: "center", marginBottom: "20px" }}>
-            {/* Green Check Icon */}
             <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: "0 auto" }}>
               <circle cx="28" cy="28" r="26" stroke="#00F5D4" strokeWidth="1.5" opacity="0.3" />
               <circle cx="28" cy="28" r="22" fill="rgba(0,245,212,0.06)" stroke="#00F5D4" strokeWidth="1.5" />
-              <path
-                d="M20 28L25 33L36 22"
-                stroke="#00F5D4"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M20 28L25 33L36 22" stroke="#00F5D4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-
-          <h3 style={{ textAlign: "center", fontSize: "16px", fontWeight: 700, color: "var(--c-text)", marginBottom: "8px" }}>
-            Successfully deleted.
-          </h3>
+          <h3 style={{ textAlign: "center", fontSize: "16px", fontWeight: 700, color: "var(--c-text)", marginBottom: "8px" }}>Successfully deleted.</h3>
           <p style={{ textAlign: "center", fontSize: "13px", color: "var(--c-text-muted)", lineHeight: 1.5, marginBottom: "24px" }}>
             You can download or export the deletion report from the Deleted Reports page.
           </p>
-
           <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-            <button
-              onClick={() => setShowSuccessModal(false)}
-              className="dash-btn-ghost text-xs px-5 py-2.5 rounded-lg"
-            >
-              Close
-            </button>
+            <button onClick={() => setShowSuccessModal(false)} className="dash-btn-ghost text-xs px-5 py-2.5 rounded-lg">Close</button>
             {onNavigate && (
-              <button
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  onNavigate("deleted-reports");
-                }}
+              <button onClick={() => { setShowSuccessModal(false); onNavigate("deleted-reports"); }}
                 className="text-white text-xs font-semibold uppercase tracking-widest px-5 py-2.5 rounded-lg transition-colors"
                 style={{ backgroundColor: "var(--c-accent)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--c-accent-hover)")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--c-accent)")}
-              >
-                Go to Deleted Reports
-              </button>
+              >Go to Deleted Reports</button>
             )}
           </div>
         </ModalBackdrop>

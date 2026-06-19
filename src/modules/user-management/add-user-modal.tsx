@@ -1,10 +1,12 @@
 "use client";
+// src/modules/user-management/add-user-modal.tsx
 import { useState } from "react";
 import ModalBackdrop from "@/components/shared/modal-backdrop";
 
 interface AddUserModalProps {
   onClose: () => void;
   onSave: (user: Record<string, string>) => void;
+  saving?: boolean;
 }
 
 function validateEmail(email: string): string {
@@ -14,13 +16,13 @@ function validateEmail(email: string): string {
   return "";
 }
 
-export default function AddUserModal({ onClose, onSave }: AddUserModalProps) {
+export default function AddUserModal({ onClose, onSave, saving }: AddUserModalProps) {
   const [firstName, setFirstName] = useState("");
   const [middleInitial, setMiddleInitial] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Organizer");
-  const [gamerType, setGamerType] = useState("Free Agent");
+  // gamerType is always "free_agent" when role === Gamer — not shown in UI
   const [status, setStatus] = useState("Active");
   const [tempPassword, setTempPassword] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -37,7 +39,9 @@ export default function AddUserModal({ onClose, onSave }: AddUserModalProps) {
       middleInitial,
       lastName,
       email,
-      role: role === "Gamer" ? `Gamer (${gamerType})` : role,
+      role,
+      // Admins can only create free agents — gamerType is always hardcoded here
+      gamerType: role === "Gamer" ? "free_agent" : "",
       status,
       tempPassword,
     });
@@ -48,6 +52,7 @@ export default function AddUserModal({ onClose, onSave }: AddUserModalProps) {
 
   return (
     <ModalBackdrop onClose={onClose} title="Add User" subtitle="Create a new user account" maxWidth="520px">
+      {/* Name row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 1fr", gap: "12px", marginBottom: "16px" }}>
         <div>
           <label className="dash-label">
@@ -111,7 +116,7 @@ export default function AddUserModal({ onClose, onSave }: AddUserModalProps) {
         )}
       </div>
 
-      {/* Role */}
+      {/* Role + Status row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
         <div>
           <label className="dash-label">Role</label>
@@ -120,35 +125,37 @@ export default function AddUserModal({ onClose, onSave }: AddUserModalProps) {
             <option>Gamer</option>
           </select>
         </div>
-
-        {role === "Gamer" && (
-          <div>
-            <label className="dash-label">Gamer Type</label>
-            <select value={gamerType} onChange={(e) => setGamerType(e.target.value)} className="dash-select">
-              <option>Free Agent</option>
-              <option>Drafted Gamer</option>
-            </select>
-          </div>
-        )}
-
-        {role !== "Gamer" && (
-          <div>
-            <label className="dash-label">Account Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="dash-select">
-              <option>Active</option>
-              <option>Inactive</option>
-            </select>
-          </div>
-        )}
-      </div>
-
-      {role === "Gamer" && (
-        <div style={{ marginBottom: "16px" }}>
+        <div>
           <label className="dash-label">Account Status</label>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="dash-select">
             <option>Active</option>
             <option>Inactive</option>
           </select>
+        </div>
+      </div>
+
+      {/* Gamer notice — shown when Gamer is selected, instead of the old dropdown */}
+      {role === "Gamer" && (
+        <div
+          style={{
+            backgroundColor: "rgba(0,245,212,0.05)",
+            border: "1px solid rgba(0,245,212,0.15)",
+            borderRadius: "8px",
+            padding: "10px 14px",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#00F5D4">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+          </svg>
+          <span style={{ fontSize: "11px", color: "var(--c-text-muted)" }}>
+            Gamer accounts created by Admin always start as{" "}
+            <strong style={{ color: "#00F5D4" }}>Free Agent</strong>. An organizer can
+            draft them to a team later.
+          </span>
         </div>
       )}
 
@@ -169,17 +176,18 @@ export default function AddUserModal({ onClose, onSave }: AddUserModalProps) {
 
       {/* Actions */}
       <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-        <button onClick={onClose} className="dash-btn-ghost text-xs px-5 py-2 rounded-lg">
+        <button onClick={onClose} className="dash-btn-ghost text-xs px-5 py-2 rounded-lg" disabled={saving}>
           Cancel
         </button>
         <button
           onClick={handleSave}
+          disabled={saving}
           className="text-white text-xs font-semibold uppercase tracking-widest px-5 py-2 rounded-lg transition-colors"
-          style={{ backgroundColor: "#FF4655" }}
-          onMouseEnter={(e) => ((e.currentTarget).style.backgroundColor = "#E53E4D")}
-          onMouseLeave={(e) => ((e.currentTarget).style.backgroundColor = "#FF4655")}
+          style={{ backgroundColor: saving ? "rgba(255,70,85,0.5)" : "#FF4655", cursor: saving ? "not-allowed" : "pointer" }}
+          onMouseEnter={(e) => { if (!saving) (e.currentTarget).style.backgroundColor = "#E53E4D"; }}
+          onMouseLeave={(e) => { if (!saving) (e.currentTarget).style.backgroundColor = "#FF4655"; }}
         >
-          Save
+          {saving ? "Saving…" : "Save"}
         </button>
       </div>
     </ModalBackdrop>

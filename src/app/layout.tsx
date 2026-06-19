@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/lib/theme-context";
 import { FontSizeProvider } from "@/lib/font-size-context";
 import { AccessibilityProvider } from "@/lib/accessibility-context";
+import { AuthProvider } from "@/lib/auth-context";
 
 export const metadata: Metadata = {
   title: "VCF-LVL-UP — Youth eSports Management",
@@ -35,13 +36,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <ThemeProvider>
-          <AccessibilityProvider>
-            <FontSizeProvider>
-              {children}
-            </FontSizeProvider>
-          </AccessibilityProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <AccessibilityProvider>
+              <FontSizeProvider>
+                {children}
+              </FontSizeProvider>
+            </AccessibilityProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

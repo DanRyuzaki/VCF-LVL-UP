@@ -1,6 +1,10 @@
 "use client";
+// src/components/login/login-form.tsx
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import RoleSelector from "@/components/login/role-selector";
 import ConsentModal from "@/components/login/consent-modal";
 import { UserRole } from "@/types/user";
@@ -8,10 +12,8 @@ import { useTheme } from "@/lib/theme-context";
 
 const CONSENT_KEY = "vcf_consent_session";
 
-
 function validateEmail(email: string): string {
   if (!email) return "Email address is required.";
-
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   if (!re.test(email)) return "Please enter a valid email address (e.g. you@domain.com).";
   return "";
@@ -23,12 +25,12 @@ function validatePassword(password: string): string[] {
   return errors;
 }
 
-
-
 export default function LoginForm() {
   const router = useRouter();
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+  // theme is declared but drives CSS vars — keep it to avoid removing the import
+  void theme;
+
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,14 +38,11 @@ export default function LoginForm() {
   const [consentGiven, setConsentGiven] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
-
+  const [isLoading, setIsLoading] = useState(false);
 
   const [emailError, setEmailError] = useState("");
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [touched, setTouched] = useState({ email: false, password: false });
-
-
-
 
   useEffect(() => {
     if (sessionStorage.getItem(CONSENT_KEY) === "true") {
@@ -55,11 +54,6 @@ export default function LoginForm() {
     ? `WELCOME BACK, ${selectedRole.toUpperCase()}!`
     : "WELCOME BACK!";
 
-  const pwErrors = validatePassword(password);
-
-
-
-
   const handleEmailBlur = () => {
     setTouched((t) => ({ ...t, email: true }));
     setEmailError(validateEmail(email));
@@ -70,13 +64,79 @@ export default function LoginForm() {
     setPasswordErrors(validatePassword(password));
   };
 
+  // ------------------------------------------------------------------
+  // Core login — called after consent is confirmed
+  // ------------------------------------------------------------------
+  const doLogin = async () => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      // 1. Sign in with Firebase Auth
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const uid = credential.user.uid;
+
+      // 2. Fetch Firestore profile
+      const snap = await getDoc(doc(db, "users", uid));
+      if (!snap.exists()) {
+        setError("Account setup incomplete. Please contact an administrator.");
+        await auth.signOut();
+        return;
+      }
+
+      const profile = snap.data() as { role: UserRole; status: string };
+
+      // 3. Check account is active
+      if (profile.status === "inactive") {
+        setError("Your account is inactive. Please contact an administrator.");
+        await auth.signOut();
+        return;
+      }
+      if (profile.status === "suspended") {
+        setError("Your account has been suspended. Please contact an administrator.");
+        await auth.signOut();
+        return;
+      }
+
+      // 4. Verify the role the user selected matches what's stored
+      if (selectedRole && profile.role !== selectedRole) {
+        setError("The role you selected does not match your account. Please select the correct role.");
+        await auth.signOut();
+        return;
+      }
+
+      // 5. Update lastLogin timestamp (non-blocking — don't await, failure is OK)
+      updateDoc(doc(db, "users", uid), { lastLogin: serverTimestamp() }).catch(() => {});
+
+      // 6. Route to the correct dashboard
+      router.push(`/${profile.role}`);
+    } catch (err: unknown) {
+      // Map Firebase Auth error codes to human-friendly messages
+      const code = (err as { code?: string }).code ?? "";
+      if (
+        code === "auth/user-not-found" ||
+        code === "auth/wrong-password" ||
+        code === "auth/invalid-credential"
+      ) {
+        setError("Incorrect email or password. Please try again.");
+      } else if (code === "auth/too-many-requests") {
+        setError("Too many failed attempts. Please wait a moment and try again.");
+      } else if (code === "auth/network-request-failed") {
+        setError("Network error. Please check your connection.");
+      } else {
+        setError("Login failed. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setTouched({ email: true, password: true });
 
     const eErr = validateEmail(email);
     const pErr = validatePassword(password);
-
     setEmailError(eErr);
     setPasswordErrors(pErr);
 
@@ -88,15 +148,15 @@ export default function LoginForm() {
 
     setError("");
     if (!consentGiven) { setShowModal(true); return; }
-    router.push(`/${selectedRole}`);
+    doLogin();
   };
 
   const handleConsentAccept = () => {
+    sessionStorage.setItem(CONSENT_KEY, "true");
     setConsentGiven(true);
     setShowModal(false);
-    router.push(`/${selectedRole}`);
+    doLogin();
   };
-
 
   const inputStyle = (hasError: boolean) => ({
     width: "100%",
@@ -195,7 +255,6 @@ export default function LoginForm() {
               <span style={{ color: "#EF4444" }} aria-label="required">*</span>
             </label>
 
-            {/* Password input + show/hide toggle */}
             <div className="relative">
               <input
                 id="login-password"
@@ -217,7 +276,6 @@ export default function LoginForm() {
                   passwordErrors.length > 0 && touched.password ? "#EF4444" : "var(--c-accent)")
                 }
               />
-              {/* Show/hide password */}
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
@@ -240,7 +298,6 @@ export default function LoginForm() {
               </button>
             </div>
 
-            {/* Password error message */}
             {touched.password && passwordErrors.length > 0 && (
               <p id="password-errors" className="text-xs mt-1.5 flex items-center gap-1" style={{ color: "#EF4444" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -250,8 +307,6 @@ export default function LoginForm() {
               </p>
             )}
           </div>
-
-
 
           {/* General error */}
           {error && (
@@ -266,16 +321,20 @@ export default function LoginForm() {
           {/* Submit */}
           <button
             type="submit"
+            disabled={isLoading}
             className="w-full text-white font-semibold uppercase tracking-widest text-sm py-3 rounded-lg transition-colors"
-            style={{ backgroundColor: "var(--c-accent)" }}
-            onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent-hover)")
-            }
-            onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent)")
-            }
+            style={{
+              backgroundColor: isLoading ? "rgba(255,70,85,0.5)" : "var(--c-accent)",
+              cursor: isLoading ? "not-allowed" : "pointer",
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent-hover)";
+            }}
+            onMouseLeave={(e) => {
+              if (!isLoading) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent)";
+            }}
           >
-            Login
+            {isLoading ? "Signing in…" : "Login"}
           </button>
 
           {/* Reset Password */}

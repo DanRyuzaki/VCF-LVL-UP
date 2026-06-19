@@ -1,48 +1,121 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  where,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
 
 interface Announcement {
   id: string;
   title: string;
   content: string;
   submittedAt: string;
-  status: string;
+  status: "pending" | "approved" | "rejected";
+  submittedBy: string;
+  submittedByUid: string;
 }
 
 interface AnnouncementManagementModuleProps {
   showSubmitForm?: boolean;
 }
 
-const initialAnnouncements: Announcement[] = [
-  { id: "a-1", title: "Season 4 Bracket Open",      content: "Registration is now open for MLBB Season 4.",  submittedAt: "2025-06-10", status: "published" },
-  { id: "a-2", title: "Maintenance Notice",           content: "Scheduled downtime on June 15 from 2–4 AM.",  submittedAt: "2025-06-11", status: "pending" },
-  { id: "a-3", title: "New Tournament Mode",          content: "Double-elimination brackets are now available.", submittedAt: "2025-06-12", status: "approved" },
-];
-
 export default function AnnouncementManagementModule({
   showSubmitForm = true,
 }: AnnouncementManagementModuleProps) {
-  const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
-  const [newAnnTitle, setNewAnnTitle]     = useState("");
+  const { profile } = useAuth();
+
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newAnnTitle, setNewAnnTitle] = useState("");
   const [newAnnContent, setNewAnnContent] = useState("");
-  const [annSuccess, setAnnSuccess]       = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [annSuccess, setAnnSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAnnSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Organizer: sees own announcements (all statuses)
+    // Gamer (showSubmitForm=false): sees only approved announcements
+    const col = collection(db, "announcements");
+    let q;
+
+    if (showSubmitForm && profile?.uid) {
+      // Organizer view — own submissions, newest first
+      q = query(
+        col,
+        where("submittedByUid", "==", profile.uid),
+        orderBy("createdAt", "desc")
+      );
+    } else {
+      // Gamer read-only view — only approved
+      q = query(
+        col,
+        where("status", "==", "approved"),
+        orderBy("createdAt", "desc")
+      );
+    }
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const rows: Announcement[] = snap.docs.map((d) => {
+          const data = d.data();
+          const ts = data.createdAt?.toDate?.();
+          return {
+            id: d.id,
+            title: data.title ?? "",
+            content: data.content ?? "",
+            submittedAt: ts ? ts.toISOString().slice(0, 10) : "—",
+            status: data.status ?? "pending",
+            submittedBy: data.submittedBy ?? "",
+            submittedByUid: data.submittedByUid ?? "",
+          };
+        });
+        setAnnouncements(rows);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("announcements snapshot error:", err);
+        setError("Failed to load announcements.");
+        setLoading(false);
+      }
+    );
+
+    return () => unsub();
+  }, [showSubmitForm, profile?.uid]);
+
+  const handleAnnSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAnnTitle || !newAnnContent) return;
+    if (!newAnnTitle.trim() || !newAnnContent.trim()) return;
+    if (!profile) { setError("You must be signed in to submit."); return; }
 
-    const newA: Announcement = {
-      id: `a-${Date.now()}`,
-      title: newAnnTitle,
-      content: newAnnContent,
-      submittedAt: new Date().toISOString().slice(0, 10),
-      status: "pending",
-    };
-    setAnnouncements((prev) => [...prev, newA]);
-    setNewAnnTitle("");
-    setNewAnnContent("");
-    setAnnSuccess(true);
-    setTimeout(() => setAnnSuccess(false), 3000);
+    setSubmitting(true);
+    setError(null);
+    try {
+      await addDoc(collection(db, "announcements"), {
+        title: newAnnTitle.trim(),
+        content: newAnnContent.trim(),
+        status: "pending",
+        submittedBy: `${profile.firstName} ${profile.lastName}`.trim(),
+        submittedByUid: profile.uid,
+        createdAt: serverTimestamp(),
+      });
+      setNewAnnTitle("");
+      setNewAnnContent("");
+      setAnnSuccess(true);
+      setTimeout(() => setAnnSuccess(false), 3000);
+    } catch (err) {
+      console.error("addDoc error:", err);
+      setError("Failed to submit announcement. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -55,6 +128,11 @@ export default function AnnouncementManagementModule({
               Announcement submitted for admin approval.
             </div>
           )}
+          {error && (
+            <div className="bg-[#FF4655]/10 border border-[#FF4655]/30 text-[#FF4655] text-xs rounded-lg px-4 py-2 mb-4">
+              {error}
+            </div>
+          )}
           <form onSubmit={handleAnnSubmit} className="space-y-3">
             <div>
               <label className="dash-label">Title</label>
@@ -63,6 +141,7 @@ export default function AnnouncementManagementModule({
                 onChange={(e) => setNewAnnTitle(e.target.value)}
                 placeholder="Announcement title..."
                 className="dash-input"
+                disabled={submitting}
               />
             </div>
             <div>
@@ -74,47 +153,61 @@ export default function AnnouncementManagementModule({
                 placeholder="Write announcement content..."
                 className="dash-input"
                 style={{ resize: "none" }}
+                disabled={submitting}
               />
             </div>
             <button
               type="submit"
-              className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors"
+              disabled={submitting}
+              className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
             >
-              Submit Announcement
+              {submitting ? "Submitting…" : "Submit Announcement"}
             </button>
           </form>
         </div>
       )}
 
       <div className="dash-table-wrap">
-        <table className="w-full border-collapse">
-          <thead className="dash-thead">
-            <tr>
-              {["Title", "Date Submitted", "Status"].map((h) => (
-                <th key={h} className="dash-th">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {announcements.map((a) => (
-              <tr key={a.id} className="dash-tr">
-                <td className="dash-td font-medium">{a.title}</td>
-                <td className="dash-td-muted">{a.submittedAt}</td>
-                <td className="dash-td">
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                      a.status === "published" || a.status === "approved"
-                        ? "bg-[#00F5D4]/15 text-[#00F5D4]"
-                        : "bg-[#FF4655]/20 text-[#FF4655]"
-                    }`}
-                  >
-                    {a.status}
-                  </span>
-                </td>
+        {loading ? (
+          <div className="text-center text-xs py-8" style={{ color: "var(--c-text-dim)" }}>
+            Loading announcements…
+          </div>
+        ) : announcements.length === 0 ? (
+          <div className="text-center text-xs py-8" style={{ color: "var(--c-text-dim)" }}>
+            {showSubmitForm ? "No announcements submitted yet." : "No approved announcements yet."}
+          </div>
+        ) : (
+          <table className="w-full border-collapse">
+            <thead className="dash-thead">
+              <tr>
+                {["Title", "Date Submitted", "Status"].map((h) => (
+                  <th key={h} className="dash-th">{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {announcements.map((a) => (
+                <tr key={a.id} className="dash-tr">
+                  <td className="dash-td font-medium">{a.title}</td>
+                  <td className="dash-td-muted">{a.submittedAt}</td>
+                  <td className="dash-td">
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
+                        a.status === "approved"
+                          ? "bg-[#00F5D4]/15 text-[#00F5D4]"
+                          : a.status === "rejected"
+                          ? "bg-[#FF4655]/20 text-[#FF4655]"
+                          : "bg-yellow-500/20 text-yellow-400"
+                      }`}
+                    >
+                      {a.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

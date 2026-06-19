@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { IconSearch } from "@/components/shared/icons";
-import { useOrganizerContext } from "@/lib/organizer-context";
+import { useOrganizerContext, fsAddPlayer, fsDeletePlayer } from "@/lib/organizer-context";
 
 export default function FreeAgentManagementModule() {
-  const { freeAgents, setFreeAgents } = useOrganizerContext();
+  const { freeAgents, playerDocIds, loading } = useOrganizerContext();
 
   // ── Local form state ──────────────────────────────────────────────────────
   const [newFaName,    setNewFaName]    = useState("");
@@ -16,16 +16,18 @@ export default function FreeAgentManagementModule() {
   const [newFaWinRate, setNewFaWinRate] = useState("60%");
   const [newFaKda,     setNewFaKda]     = useState("4.0");
   const [search,       setSearch]       = useState("");
+  const [saving,       setSaving]       = useState(false);
+  const [saveError,    setSaveError]    = useState<string | null>(null);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleCreateFreeAgent = (e: React.FormEvent) => {
+  const handleCreateFreeAgent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFaName.trim() || !newFaIgn.trim()) return;
-
-    setFreeAgents((prev) => [
-      ...prev,
-      {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await fsAddPlayer({
         name: newFaName.trim(),
         ign: newFaIgn.trim(),
         game: newFaGame,
@@ -34,15 +36,26 @@ export default function FreeAgentManagementModule() {
         winRate: newFaWinRate,
         kda: newFaKda,
         history: ["Win", "Win", "Loss", "Win", "Loss"],
-      },
-    ]);
-
-    setNewFaName("");
-    setNewFaIgn("");
+        drafted: false,
+      });
+      setNewFaName("");
+      setNewFaIgn("");
+    } catch (err) {
+      console.error("Failed to create free agent:", err);
+      setSaveError("Failed to create free agent. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleRemove = (ign: string) => {
-    setFreeAgents((prev) => prev.filter((p) => p.ign !== ign));
+  const handleRemove = async (ign: string) => {
+    const docId = playerDocIds[ign];
+    if (!docId) return;
+    try {
+      await fsDeletePlayer(docId);
+    } catch (err) {
+      console.error("Failed to remove player:", err);
+    }
   };
 
   const filtered = freeAgents.filter(
@@ -58,6 +71,11 @@ export default function FreeAgentManagementModule() {
       {/* Add Free Agent Form */}
       <div className="dash-card p-5">
         <div className="dash-section-title">Add Free Agent Player</div>
+        {saveError && (
+          <div className="mb-3 text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/30 px-3 py-2 rounded-lg">
+            {saveError}
+          </div>
+        )}
         <form
           onSubmit={handleCreateFreeAgent}
           className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end"
@@ -69,6 +87,7 @@ export default function FreeAgentManagementModule() {
               onChange={(e) => setNewFaName(e.target.value)}
               placeholder="e.g. Ana Lim"
               className="dash-input"
+              disabled={saving}
             />
           </div>
           <div>
@@ -78,6 +97,7 @@ export default function FreeAgentManagementModule() {
               onChange={(e) => setNewFaIgn(e.target.value)}
               placeholder="e.g. AnaLim_PH"
               className="dash-input"
+              disabled={saving}
             />
           </div>
           <div>
@@ -86,6 +106,7 @@ export default function FreeAgentManagementModule() {
               value={newFaGame}
               onChange={(e) => setNewFaGame(e.target.value)}
               className="dash-select"
+              disabled={saving}
             >
               <option value="MLBB">MLBB</option>
               <option value="CODM">CODM</option>
@@ -93,9 +114,10 @@ export default function FreeAgentManagementModule() {
           </div>
           <button
             type="submit"
-            className="bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest py-2.5 rounded-lg transition-colors"
+            disabled={saving}
+            className="bg-[#FF4655] hover:bg-[#E53E4D] disabled:opacity-50 text-white text-xs font-semibold uppercase tracking-widest py-2.5 rounded-lg transition-colors"
           >
-            Create Agent
+            {saving ? "Saving…" : "Create Agent"}
           </button>
         </form>
       </div>
@@ -114,36 +136,47 @@ export default function FreeAgentManagementModule() {
           />
         </div>
 
-        <div className="dash-table-wrap">
-          <table className="w-full border-collapse">
-            <thead className="dash-thead">
-              <tr>
-                {["Name", "IGN", "Game", "Role", "Rank", "Actions"].map((h) => (
-                  <th key={h} className="dash-th">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((fa) => (
-                <tr key={fa.ign} className="dash-tr">
-                  <td className="dash-td font-semibold">{fa.name}</td>
-                  <td className="dash-td-muted">{fa.ign}</td>
-                  <td className="dash-td">{fa.game}</td>
-                  <td className="dash-td">{fa.role}</td>
-                  <td className="dash-td font-bold text-purple-300">{fa.rank}</td>
-                  <td className="dash-td">
-                    <button
-                      onClick={() => handleRemove(fa.ign)}
-                      className="dash-btn-ghost text-xs px-3 py-1 rounded"
-                    >
-                      Remove
-                    </button>
-                  </td>
+        {loading ? (
+          <div className="text-center py-8 text-xs text-[var(--c-text-muted)]">Loading players…</div>
+        ) : (
+          <div className="dash-table-wrap">
+            <table className="w-full border-collapse">
+              <thead className="dash-thead">
+                <tr>
+                  {["Name", "IGN", "Game", "Role", "Rank", "Actions"].map((h) => (
+                    <th key={h} className="dash-th">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtered.map((fa) => (
+                  <tr key={fa.ign} className="dash-tr">
+                    <td className="dash-td font-semibold">{fa.name}</td>
+                    <td className="dash-td-muted">{fa.ign}</td>
+                    <td className="dash-td">{fa.game}</td>
+                    <td className="dash-td">{fa.role}</td>
+                    <td className="dash-td font-bold text-purple-300">{fa.rank}</td>
+                    <td className="dash-td">
+                      <button
+                        onClick={() => handleRemove(fa.ign)}
+                        className="dash-btn-ghost text-xs px-3 py-1 rounded"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && !loading && (
+                  <tr>
+                    <td colSpan={6} className="text-center py-6 text-xs text-[var(--c-text-muted)]">
+                      No free agents found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

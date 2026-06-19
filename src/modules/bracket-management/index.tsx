@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback, useContext, CSSProperties } from "react";
-import { OrganizerContext } from "@/lib/organizer-context";
+import { OrganizerContext, fsAddMatch, fsUpdateMatch, fsUpdateTournament } from "@/lib/organizer-context";
 
 /* ═══════════════════════════════════════════════════════
    Types
@@ -506,8 +506,8 @@ export default function BracketManagementModule({
     };
   }, [calculateConnectors, selectedTourneyId, brackets]);
 
-  const handleGenerateBracket = () => {
-    if (!selectedTourneyId || !setTournaments || !setMatchesState || !tournaments) return;
+  const handleGenerateBracket = async () => {
+    if (!selectedTourneyId || !tournaments) return;
 
     const selectedTourney = tournaments.find((t) => t.id === selectedTourneyId);
     if (!selectedTourney) return;
@@ -517,77 +517,40 @@ export default function BracketManagementModule({
     const bracketSize = registeredTeamNames.length <= 4 ? 4 : 8;
 
     const defaultTeams = ["Shadow Ops", "Ghost Squad", "Bravo Six", "Delta Force", "Team Blaze", "Team Frost", "Team Storm", "Team Venom"];
-    const teams = [...registeredTeamNames];
-    while (teams.length < bracketSize) {
-      const nextDefault = defaultTeams.find((d) => !teams.includes(d));
-      teams.push(nextDefault || "TBD");
+    const teamSlots = [...registeredTeamNames];
+    while (teamSlots.length < bracketSize) {
+      const nextDefault = defaultTeams.find((d) => !teamSlots.includes(d));
+      teamSlots.push(nextDefault || "TBD");
     }
 
-    const newMatches: any[] = [];
-    if (bracketSize === 4) {
-      newMatches.push(
-        {
-          id: `${selectedTourneyId}_sf1`,
-          round: "Semifinals",
-          teamA: teams[0],
-          teamB: teams[1],
-          winner: "",
-          scoreA: 0,
-          scoreB: 0,
-          date: new Date().toISOString().split("T")[0],
-          time: "2:00 PM",
-          status: "pending",
-        },
-        {
-          id: `${selectedTourneyId}_sf2`,
-          round: "Semifinals",
-          teamA: teams[2],
-          teamB: teams[3],
-          winner: "",
-          scoreA: 0,
-          scoreB: 0,
-          date: new Date().toISOString().split("T")[0],
-          time: "4:00 PM",
-          status: "pending",
-        },
-        {
-          id: `${selectedTourneyId}_f1`,
-          round: "Finals",
-          teamA: "TBD",
-          teamB: "TBD",
-          winner: "",
-          scoreA: 0,
-          scoreB: 0,
-          date: new Date().toISOString().split("T")[0],
-          time: "6:00 PM",
-          status: "pending",
-        }
-      );
-    } else {
-      newMatches.push(
-        { id: `${selectedTourneyId}_qf1`, round: "Quarterfinals", teamA: teams[0], teamB: teams[1], winner: "", scoreA: 0, scoreB: 0, date: new Date().toISOString().split("T")[0], time: "1:00 PM", status: "pending" },
-        { id: `${selectedTourneyId}_qf2`, round: "Quarterfinals", teamA: teams[2], teamB: teams[3], winner: "", scoreA: 0, scoreB: 0, date: new Date().toISOString().split("T")[0], time: "2:30 PM", status: "pending" },
-        { id: `${selectedTourneyId}_qf3`, round: "Quarterfinals", teamA: teams[4], teamB: teams[5], winner: "", scoreA: 0, scoreB: 0, date: new Date().toISOString().split("T")[0], time: "4:00 PM", status: "pending" },
-        { id: `${selectedTourneyId}_qf4`, round: "Quarterfinals", teamA: teams[6], teamB: teams[7], winner: "", scoreA: 0, scoreB: 0, date: new Date().toISOString().split("T")[0], time: "5:30 PM", status: "pending" },
-        { id: `${selectedTourneyId}_sf1`, round: "Semifinals", teamA: "TBD", teamB: "TBD", winner: "", scoreA: 0, scoreB: 0, date: new Date().toISOString().split("T")[0], time: "7:00 PM", status: "pending" },
-        { id: `${selectedTourneyId}_sf2`, round: "Semifinals", teamA: "TBD", teamB: "TBD", winner: "", scoreA: 0, scoreB: 0, date: new Date().toISOString().split("T")[0], time: "8:30 PM", status: "pending" },
-        { id: `${selectedTourneyId}_f1`, round: "Finals", teamA: "TBD", teamB: "TBD", winner: "", scoreA: 0, scoreB: 0, date: new Date().toISOString().split("T")[0], time: "9:00 PM", status: "pending" }
-      );
-    }
+    const today = new Date().toISOString().split("T")[0];
+    const matchDefs: Omit<import("@/lib/organizer-context").Match, "id">[] =
+      bracketSize === 4
+        ? [
+            { round: "Semifinals", teamA: teamSlots[0], teamB: teamSlots[1], winner: "", scoreA: 0, scoreB: 0, date: today, time: "2:00 PM", status: "pending", tournamentId: selectedTourneyId },
+            { round: "Semifinals", teamA: teamSlots[2], teamB: teamSlots[3], winner: "", scoreA: 0, scoreB: 0, date: today, time: "4:00 PM", status: "pending", tournamentId: selectedTourneyId },
+            { round: "Finals",     teamA: "TBD",         teamB: "TBD",         winner: "", scoreA: 0, scoreB: 0, date: today, time: "6:00 PM", status: "pending", tournamentId: selectedTourneyId },
+          ]
+        : [
+            { round: "Quarterfinals", teamA: teamSlots[0], teamB: teamSlots[1], winner: "", scoreA: 0, scoreB: 0, date: today, time: "1:00 PM", status: "pending", tournamentId: selectedTourneyId },
+            { round: "Quarterfinals", teamA: teamSlots[2], teamB: teamSlots[3], winner: "", scoreA: 0, scoreB: 0, date: today, time: "2:30 PM", status: "pending", tournamentId: selectedTourneyId },
+            { round: "Quarterfinals", teamA: teamSlots[4], teamB: teamSlots[5], winner: "", scoreA: 0, scoreB: 0, date: today, time: "4:00 PM", status: "pending", tournamentId: selectedTourneyId },
+            { round: "Quarterfinals", teamA: teamSlots[6], teamB: teamSlots[7], winner: "", scoreA: 0, scoreB: 0, date: today, time: "5:30 PM", status: "pending", tournamentId: selectedTourneyId },
+            { round: "Semifinals",    teamA: "TBD",         teamB: "TBD",         winner: "", scoreA: 0, scoreB: 0, date: today, time: "7:00 PM", status: "pending", tournamentId: selectedTourneyId },
+            { round: "Semifinals",    teamA: "TBD",         teamB: "TBD",         winner: "", scoreA: 0, scoreB: 0, date: today, time: "8:30 PM", status: "pending", tournamentId: selectedTourneyId },
+            { round: "Finals",        teamA: "TBD",         teamB: "TBD",         winner: "", scoreA: 0, scoreB: 0, date: today, time: "9:00 PM", status: "pending", tournamentId: selectedTourneyId },
+          ];
 
-    setMatchesState((prev) => [...prev, ...newMatches]);
-    setTournaments((prev) =>
-      prev.map((t) =>
-        t.id === selectedTourneyId
-          ? {
-              ...t,
-              status: "ongoing",
-              matchesList: newMatches.map((m) => m.id),
-              teamsRegistered: teams.length,
-            }
-          : t
-      )
-    );
+    try {
+      const matchIds = await Promise.all(matchDefs.map((m) => fsAddMatch(m)));
+      await fsUpdateTournament(selectedTourneyId, {
+        status: "ongoing",
+        matchesList: matchIds,
+        teamsRegistered: teamSlots.length,
+      });
+    } catch (err) {
+      console.error("Failed to generate bracket:", err);
+    }
   };
 
   const activeMatch = matchesState?.find((m) => m.id === editingMatchId);
@@ -603,38 +566,39 @@ export default function BracketManagementModule({
     }
   }, [activeMatch]);
 
-  const handleModalSubmit = () => {
-    if (!editingMatchId || !setMatchesState || !tournaments) return;
+  const handleModalSubmit = async () => {
+    if (!editingMatchId || !tournaments) return;
 
     const winnerName = modalWinner === "teamA" ? modalTeamA : modalTeamB;
 
-    setMatchesState((prev) => {
-      const updated = prev.map((m) => {
-        if (m.id === editingMatchId) {
-          return {
-            ...m,
-            status: "completed",
-            scoreA: modalScoreA,
-            scoreB: modalScoreB,
-            winner: winnerName,
-          };
-        }
-        return m;
+    try {
+      await fsUpdateMatch(editingMatchId, {
+        status: "completed",
+        scoreA: modalScoreA,
+        scoreB: modalScoreB,
+        winner: winnerName,
       });
 
-      const selectedTourney = tournaments.find((t) => t.id === selectedTourneyId);
-      if (selectedTourney) {
-        return propagateWinner(updated, selectedTourney, editingMatchId, winnerName);
+      // Propagate winner to next bracket slot via Firestore
+      if (matchesState && tournaments) {
+        const selectedTourney = tournaments.find((t) => t.id === selectedTourneyId);
+        if (selectedTourney) {
+          const updatedLocal = propagateWinner(matchesState, selectedTourney, editingMatchId, winnerName);
+          // Find any match that changed (the next-round slot that got a TBD filled in)
+          for (const m of updatedLocal) {
+            const original = matchesState.find((o) => o.id === m.id);
+            if (original && (original.teamA !== m.teamA || original.teamB !== m.teamB)) {
+              await fsUpdateMatch(m.id, { teamA: m.teamA, teamB: m.teamB });
+            }
+          }
+        }
       }
-      return updated;
-    });
 
-    if (activeMatch && activeMatch.round === "Finals" && setTournaments) {
-      setTournaments((prev) =>
-        prev.map((t) =>
-          t.id === selectedTourneyId ? { ...t, status: "completed" } : t
-        )
-      );
+      if (activeMatch && activeMatch.round === "Finals") {
+        await fsUpdateTournament(selectedTourneyId!, { status: "completed" });
+      }
+    } catch (err) {
+      console.error("Failed to save match result:", err);
     }
 
     setEditingMatchId(null);

@@ -2,18 +2,18 @@
 
 import { useState, useMemo } from "react";
 import { IconX } from "@/components/shared/icons";
-import { useOrganizerContext, type Player } from "@/lib/organizer-context";
+import { useOrganizerContext, fsUpdatePlayer, fsUpdateTeam, type Player } from "@/lib/organizer-context";
 
 export default function DraftManagementModule() {
-  const { freeAgents, setFreeAgents, draftedPlayers, setDraftedPlayers, teams, setTeams } =
-    useOrganizerContext();
+  const { freeAgents, draftedPlayers, teams, playerDocIds, loading } = useOrganizerContext();
 
   // ── Local UI state ────────────────────────────────────────────────────────
-  const [draftSearch,  setDraftSearch]  = useState("");
-  const [draftGame,    setDraftGame]    = useState("All");
-  const [draftRole,    setDraftRole]    = useState("All");
-  const [draftRank,    setDraftRank]    = useState("All");
+  const [draftSearch,   setDraftSearch]   = useState("");
+  const [draftGame,     setDraftGame]     = useState("All");
+  const [draftRole,     setDraftRole]     = useState("All");
+  const [draftRank,     setDraftRank]     = useState("All");
   const [hoveredPlayer, setHoveredPlayer] = useState<Player | null>(null);
+  const [actionError,   setActionError]   = useState<string | null>(null);
 
   // ── Derived filter options ────────────────────────────────────────────────
 
@@ -51,36 +51,72 @@ export default function DraftManagementModule() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleDraft = (player: Player, targetTeamName: string) => {
-    setFreeAgents((prev) => prev.filter((p) => p.ign !== player.ign));
-    setDraftedPlayers((prev) => [...prev, { ...player, team: targetTeamName }]);
-    setTeams((prev) =>
-      prev.map((t) =>
-        t.name === targetTeamName
-          ? { ...t, players: [...t.players, player.name] }
-          : t
-      )
-    );
+  const handleDraft = async (player: Player, targetTeamName: string) => {
+    const playerDocId = playerDocIds[player.ign];
+    if (!playerDocId) return;
+
+    setActionError(null);
+    try {
+      // Mark player as drafted with team assignment
+      await fsUpdatePlayer(playerDocId, { drafted: true, team: targetTeamName });
+
+      // Add player to team's players array
+      const targetTeam = teams.find((t) => t.name === targetTeamName);
+      if (targetTeam) {
+        await fsUpdateTeam(targetTeam.id, {
+          players: [...targetTeam.players, player.name],
+        });
+      }
+    } catch (err) {
+      console.error("Failed to draft player:", err);
+      setActionError("Failed to draft player. Please try again.");
+    }
   };
 
-  const handleUndraft = (player: Player) => {
-    setDraftedPlayers((prev) => prev.filter((p) => p.ign !== player.ign));
-    setFreeAgents((prev) => [...prev, { ...player, team: undefined }]);
-    setTeams((prev) =>
-      prev.map((t) =>
-        t.name === player.team
-          ? { ...t, players: t.players.filter((name) => name !== player.name) }
-          : t
-      )
-    );
-    if (hoveredPlayer?.ign === player.ign) setHoveredPlayer(null);
+  const handleUndraft = async (player: Player) => {
+    const playerDocId = playerDocIds[player.ign];
+    if (!playerDocId) return;
+
+    setActionError(null);
+    try {
+      // Mark player as free agent again
+      await fsUpdatePlayer(playerDocId, { drafted: false, team: undefined });
+
+      // Remove player from their team's players array
+      if (player.team) {
+        const targetTeam = teams.find((t) => t.name === player.team);
+        if (targetTeam) {
+          await fsUpdateTeam(targetTeam.id, {
+            players: targetTeam.players.filter((name) => name !== player.name),
+          });
+        }
+      }
+
+      if (hoveredPlayer?.ign === player.ign) setHoveredPlayer(null);
+    } catch (err) {
+      console.error("Failed to undraft player:", err);
+      setActionError("Failed to remove player from draft. Please try again.");
+    }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  if (loading) {
+    return (
+      <div className="text-center py-12 text-xs text-[var(--c-text-muted)]">Loading draft data…</div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2 space-y-5">
+        {/* Error banner */}
+        {actionError && (
+          <div className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/30 px-3 py-2 rounded-lg">
+            {actionError}
+          </div>
+        )}
+
         {/* Filters */}
         <div className="dash-card p-4 flex flex-col md:flex-row gap-3">
           <div className="flex-1">
@@ -153,6 +189,9 @@ export default function DraftManagementModule() {
                   </select>
                 </div>
               ))}
+              {filteredUnpicked.length === 0 && (
+                <div className="text-center py-8 text-xs text-[var(--c-text-muted)]">No players available.</div>
+              )}
             </div>
           </div>
 
@@ -188,6 +227,9 @@ export default function DraftManagementModule() {
                   </div>
                 </div>
               ))}
+              {filteredDrafted.length === 0 && (
+                <div className="text-center py-8 text-xs text-[var(--c-text-muted)]">No drafted players yet.</div>
+              )}
             </div>
           </div>
         </div>

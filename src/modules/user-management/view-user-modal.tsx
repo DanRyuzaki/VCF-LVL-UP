@@ -263,7 +263,6 @@ export default function ViewUserModal({ user, context, onClose, onDelete }: View
           <InfoRow label="Assigned Role" value={user.role} accent={
             user.role === "Admin" ? "#FF4655" : user.role === "Organizer" ? "#8B5CF6" : "#00F5D4"
           } />
-          <InfoRow label="Account Status" value={user.status} />
           <InfoRow label="Registration Date" value={user.created} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
             <span style={{ fontSize: "12px", color: "var(--c-text-dim)", textTransform: "uppercase", letterSpacing: "0.1em" }}>

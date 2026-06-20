@@ -105,12 +105,27 @@ export default function AddStreamModal({ onClose, onSave }: AddStreamModalProps)
         </label>
         <input
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) => {
+            setUrl(e.target.value);
+            // Auto-detect platform from URL
+            try {
+              const host = new URL(e.target.value).hostname.replace("www.", "");
+              if (["youtube.com", "m.youtube.com", "youtu.be"].includes(host)) setPlatform("YouTube");
+              else if (["facebook.com", "fb.watch"].includes(host)) setPlatform("Facebook");
+              else if (host === "twitch.tv") setPlatform("Twitch");
+            } catch { /* ignore invalid URL while typing */ }
+          }}
           className="dash-input"
-          placeholder="https://youtube.com/watch?v=..."
+          placeholder="Paste a YouTube, Facebook, or Twitch URL"
           style={fieldError(url) ? { borderColor: "#EF4444" } : {}}
         />
+        <div className="text-[10px] mt-1.5 space-y-0.5" style={{ color: "var(--c-text-dim)" }}>
+          <div><strong style={{ color: "var(--c-text-muted)" }}>YouTube:</strong> youtube.com/watch?v=... · youtu.be/... · youtube.com/live/...</div>
+          <div><strong style={{ color: "var(--c-text-muted)" }}>Facebook:</strong> facebook.com/.../videos/... · fb.watch/...</div>
+          <div><strong style={{ color: "var(--c-text-muted)" }}>Twitch:</strong> twitch.tv/channel · twitch.tv/videos/...</div>
+        </div>
       </div>
+
 
       {/* Schedule + Status */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "24px" }}>

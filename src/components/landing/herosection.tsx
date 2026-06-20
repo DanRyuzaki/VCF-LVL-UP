@@ -1,6 +1,43 @@
+"use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function HeroSection() {
+  const [activeTournaments, setActiveTournaments] = useState<number | null>(null);
+  const [competingTeams, setCompetingTeams] = useState<number | null>(null);
+  const [registeredPlayers, setRegisteredPlayers] = useState<number | null>(null);
+
+  useEffect(() => {
+    const unsubTournaments = onSnapshot(
+      query(collection(db, "tournaments"), where("status", "in", ["registration", "ongoing"])),
+      (snap) => setActiveTournaments(snap.size),
+      () => setActiveTournaments(null)
+    );
+    const unsubTeams = onSnapshot(
+      collection(db, "teams"),
+      (snap) => setCompetingTeams(snap.size),
+      () => setCompetingTeams(null)
+    );
+    const unsubPlayers = onSnapshot(
+      collection(db, "players"),
+      (snap) => setRegisteredPlayers(snap.size),
+      () => setRegisteredPlayers(null)
+    );
+    return () => {
+      unsubTournaments();
+      unsubTeams();
+      unsubPlayers();
+    };
+  }, []);
+
+  const stats = [
+    { value: activeTournaments,  label: "Active Tournaments" },
+    { value: competingTeams,     label: "Competing Teams" },
+    { value: registeredPlayers,  label: "Registered Players" },
+  ];
+
   return (
     <section
       className="min-h-[90vh] flex items-center justify-center text-center px-6 py-20 relative overflow-hidden"
@@ -73,14 +110,10 @@ export default function HeroSection() {
           className="flex items-center justify-center gap-10 mt-14 pt-10 border-t"
           style={{ borderColor: "var(--c-border)" }}
         >
-          {[
-            { value: "2",  label: "Active Tournaments" },
-            { value: "8",  label: "Competing Teams" },
-            { value: "48", label: "Registered Players" },
-          ].map((s) => (
+          {stats.map((s) => (
             <div key={s.label} className="text-center">
               <div className="font-head text-3xl font-bold" style={{ color: "var(--c-accent)" }}>
-                {s.value}
+                {s.value === null ? "—" : s.value}
               </div>
               <div className="text-[11px] uppercase tracking-wider mt-0.5" style={{ color: "var(--c-text-dim)" }}>
                 {s.label}

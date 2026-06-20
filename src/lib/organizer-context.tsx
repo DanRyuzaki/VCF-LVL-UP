@@ -19,6 +19,9 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  getDocs,
+  where,
+  deleteField,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -28,9 +31,11 @@ export interface Team {
   id: string;
   name: string;
   game: string;
-  head: string;
-  players: string[];
-  status: string;
+  head: string;          // IGN or name of the team leader (a drafted free agent)
+  headUid?: string;      // Firestore player doc id of the head
+  players: string[];     // list of player names currently on roster (leader + confirmed members)
+  pendingPlayers: string[]; // player names pending leader approval
+  status: string;        // "incomplete" | "eligible"
 }
 
 export interface Tournament {
@@ -60,10 +65,13 @@ export interface Match {
   time: string;
   status: string;
   tournamentId?: string;
+  tournamentName?: string;
 }
 
 export interface Player {
+  id?: string;  // Firestore doc id
   name: string;
+  email?: string;
   ign: string;
   game: string;
   role: string;
@@ -72,7 +80,8 @@ export interface Player {
   kda: string;
   history: string[];
   team?: string;
-  drafted?: boolean;
+  drafted?: boolean;       // true = confirmed on a team
+  pendingTeam?: string;    // set when pending approval
 }
 
 export interface Announcement {
@@ -90,7 +99,7 @@ export interface ChatLeader {
   history: Array<{ sender: string; text: string; time: string }>;
 }
 
-// ─── Firestore write helpers (exported so modules can use them) ───────────────
+// ─── Firestore write helpers ──────────────────────────────────────────────────
 
 export async function fsAddTeam(data: Omit<Team, "id">): Promise<string> {
   const ref = await addDoc(collection(db, "teams"), {
@@ -101,7 +110,15 @@ export async function fsAddTeam(data: Omit<Team, "id">): Promise<string> {
 }
 
 export async function fsUpdateTeam(id: string, data: Partial<Omit<Team, "id">>) {
-  await updateDoc(doc(db, "teams", id), { ...data, updatedAt: serverTimestamp() });
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    sanitized[key] = value === undefined ? deleteField() : value;
+  }
+  await updateDoc(doc(db, "teams", id), { ...sanitized, updatedAt: serverTimestamp() });
+}
+
+export async function fsDeleteTeam(id: string) {
+  await deleteDoc(doc(db, "teams", id));
 }
 
 export async function fsAddTournament(data: Omit<Tournament, "id">): Promise<string> {
@@ -116,6 +133,10 @@ export async function fsUpdateTournament(id: string, data: Partial<Omit<Tourname
   await updateDoc(doc(db, "tournaments", id), { ...data, updatedAt: serverTimestamp() });
 }
 
+export async function fsDeleteTournament(id: string) {
+  await deleteDoc(doc(db, "tournaments", id));
+}
+
 export async function fsAddMatch(data: Omit<Match, "id">): Promise<string> {
   const ref = await addDoc(collection(db, "matches"), {
     ...data,
@@ -128,7 +149,7 @@ export async function fsUpdateMatch(id: string, data: Partial<Omit<Match, "id">>
   await updateDoc(doc(db, "matches", id), { ...data, updatedAt: serverTimestamp() });
 }
 
-export async function fsAddPlayer(data: Player) {
+export async function fsAddPlayer(data: Omit<Player, "id">) {
   await addDoc(collection(db, "players"), {
     ...data,
     createdAt: serverTimestamp(),
@@ -136,30 +157,80 @@ export async function fsAddPlayer(data: Player) {
 }
 
 export async function fsUpdatePlayer(id: string, data: Partial<Player>) {
-  await updateDoc(doc(db, "players", id), { ...data, updatedAt: serverTimestamp() });
+  // Firestore rejects `undefined` values — convert them to deleteField() sentinels
+  // so optional fields like `team` and `pendingTeam` are properly removed.
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    sanitized[key] = value === undefined ? deleteField() : value;
+  }
+  await updateDoc(doc(db, "players", id), { ...sanitized, updatedAt: serverTimestamp() });
+}
+
+/**
+ * Sets teamId (and optionally gamerType) on the user's account document
+ * (users/{uid}) by matching on email.  Called whenever a player is confirmed
+ * onto a team or removed from one, so the gamer's team-viewer module and the
+ * communication module can reflect the correct identity immediately.
+ *
+ * @param email     - the player's email address (stored on both players and users docs)
+ * @param teamId    - the Firestore team document ID, or null to clear it
+ * @param isLeader  - when provided, also stamps gamerType:
+ *                    true  → "team_leader"
+ *                    false → "free_agent"   (clears leader status on removal)
+ *                    undefined → gamerType is left untouched
+ */
+export async function fsUpdateUserTeamId(
+  email: string,
+  teamId: string | null,
+  isLeader?: boolean,
+): Promise<void> {
+  if (!email) return;
+  const snap = await getDocs(
+    query(collection(db, "users"), where("email", "==", email))
+  );
+  if (snap.empty) return; // player has no linked auth account yet — safe to skip
+
+  const patch: Record<string, unknown> = { teamId, updatedAt: serverTimestamp() };
+  if (isLeader === true)  patch.gamerType = "team_leader";
+  if (isLeader === false) patch.gamerType = "free_agent";
+
+  await updateDoc(snap.docs[0].ref, patch);
 }
 
 export async function fsDeletePlayer(id: string) {
   await deleteDoc(doc(db, "players", id));
 }
 
+export async function fsAddCalendarEvent(data: {
+  title: string;
+  date: string;
+  time: string;
+  status: "approved";
+  submittedBy: string;
+  submittedByName: string;
+  matchId?: string;
+  tournamentId?: string;
+}): Promise<string> {
+  const ref = await addDoc(collection(db, "calendar_events"), {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
 // ─── Context Shape ────────────────────────────────────────────────────────────
 
 interface OrganizerContextValue {
-  // Live data from Firestore
   teams: Team[];
   tournaments: Tournament[];
   matchesState: Match[];
+  allPlayers: Player[];
   freeAgents: Player[];
   draftedPlayers: Player[];
   announcements: Announcement[];
   chatLeaders: ChatLeader[];
-
-  // Loading state
   loading: boolean;
 
-  // Setters kept for bracket-management's local generate logic;
-  // all other writes should use the fs* helpers above.
   setTeams: Dispatch<SetStateAction<Team[]>>;
   setTournaments: Dispatch<SetStateAction<Tournament[]>>;
   setMatchesState: Dispatch<SetStateAction<Match[]>>;
@@ -167,11 +238,9 @@ interface OrganizerContextValue {
   setDraftedPlayers: Dispatch<SetStateAction<Player[]>>;
   setChatLeaders: Dispatch<SetStateAction<ChatLeader[]>>;
 
-  // Raw Firestore doc ids for players (ign → docId map)
+  // Map: ign → docId
   playerDocIds: Record<string, string>;
 }
-
-// ─── Context ──────────────────────────────────────────────────────────────────
 
 export const OrganizerContext = createContext<OrganizerContextValue | null>(null);
 
@@ -179,21 +248,20 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
   const [teams, setTeams]                   = useState<Team[]>([]);
   const [tournaments, setTournaments]       = useState<Tournament[]>([]);
   const [matchesState, setMatchesState]     = useState<Match[]>([]);
+  const [allPlayers, setAllPlayers]         = useState<Player[]>([]);
   const [freeAgents, setFreeAgents]         = useState<Player[]>([]);
   const [draftedPlayers, setDraftedPlayers] = useState<Player[]>([]);
   const [chatLeaders, setChatLeaders]       = useState<ChatLeader[]>([]);
   const [playerDocIds, setPlayerDocIds]     = useState<Record<string, string>>({});
   const [loading, setLoading]               = useState(true);
 
-  // announcements is read-only in this context (AnnouncementManagementModule owns the writable copy)
   const announcements: Announcement[] = [];
 
   useEffect(() => {
     let resolved = 0;
-    const total = 4; // teams, tournaments, matches, players
+    const total = 4;
     const maybeReady = () => { resolved++; if (resolved >= total) setLoading(false); };
 
-    // ── teams ──────────────────────────────────────────────────────────────
     const unsubTeams = onSnapshot(
       query(collection(db, "teams"), orderBy("createdAt", "asc")),
       (snap) => {
@@ -203,7 +271,9 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
             name: d.data().name ?? "",
             game: d.data().game ?? "",
             head: d.data().head ?? "",
+            headUid: d.data().headUid ?? undefined,
             players: d.data().players ?? [],
+            pendingPlayers: d.data().pendingPlayers ?? [],
             status: d.data().status ?? "incomplete",
           }))
         );
@@ -212,7 +282,6 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
       (err) => { console.error("teams snapshot error:", err); maybeReady(); }
     );
 
-    // ── tournaments ────────────────────────────────────────────────────────
     const unsubTournaments = onSnapshot(
       query(collection(db, "tournaments"), orderBy("createdAt", "asc")),
       (snap) => {
@@ -237,7 +306,6 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
       (err) => { console.error("tournaments snapshot error:", err); maybeReady(); }
     );
 
-    // ── matches ────────────────────────────────────────────────────────────
     const unsubMatches = onSnapshot(
       query(collection(db, "matches"), orderBy("createdAt", "asc")),
       (snap) => {
@@ -254,6 +322,7 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
             time: d.data().time ?? "",
             status: d.data().status ?? "pending",
             tournamentId: d.data().tournamentId ?? undefined,
+            tournamentName: d.data().tournamentName ?? undefined,
           }))
         );
         maybeReady();
@@ -261,7 +330,6 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
       (err) => { console.error("matches snapshot error:", err); maybeReady(); }
     );
 
-    // ── players ────────────────────────────────────────────────────────────
     const unsubPlayers = onSnapshot(
       query(collection(db, "players"), orderBy("createdAt", "asc")),
       (snap) => {
@@ -270,7 +338,9 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
 
         snap.docs.forEach((d) => {
           const p: Player = {
+            id: d.id,
             name: d.data().name ?? "",
+            email: d.data().email ?? "",
             ign: d.data().ign ?? "",
             game: d.data().game ?? "",
             role: d.data().role ?? "",
@@ -280,12 +350,14 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
             history: d.data().history ?? [],
             team: d.data().team ?? undefined,
             drafted: d.data().drafted ?? false,
+            pendingTeam: d.data().pendingTeam ?? undefined,
           };
           allPlayers.push(p);
           idMap[p.ign] = d.id;
         });
 
-        setFreeAgents(allPlayers.filter((p) => !p.drafted));
+        setAllPlayers(allPlayers);
+        setFreeAgents(allPlayers.filter((p) => !p.drafted && !p.pendingTeam));
         setDraftedPlayers(allPlayers.filter((p) => p.drafted));
         setPlayerDocIds(idMap);
         maybeReady();
@@ -307,6 +379,7 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
         teams, setTeams,
         tournaments, setTournaments,
         matchesState, setMatchesState,
+        allPlayers,
         freeAgents, setFreeAgents,
         draftedPlayers, setDraftedPlayers,
         announcements,

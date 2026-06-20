@@ -7,6 +7,8 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
+  getDocFromServer,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
@@ -17,17 +19,12 @@ interface ChatMessage {
   senderUid: string;
   senderName: string;
   senderRole: string;
-  context: string; // "admin" | "developer"
   createdAt?: unknown;
   timestamp?: number; // epoch ms for client-side sort fallback
 }
 
-interface Props {
-  context: "admin" | "developer";
-}
-
-export default function CommunicationModule({ context }: Props) {
-  const { profile } = useAuth();
+export default function CommunicationModule() {
+  const { profile, profileError, loading: authLoading } = useAuth();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
@@ -37,16 +34,30 @@ export default function CommunicationModule({ context }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // ── Guard ─────────────────────────────────────────────────────────────────
+  const roleConfirmed = !!profile;
   const allowed =
     profile?.role === "admin" || profile?.role === "developer";
+  const denied = roleConfirmed && !allowed;
 
   // ── Firestore listener ────────────────────────────────────────────────────
+  // Wait for authLoading to finish before setting up the listener.
+  // Without this guard, the effect runs while authLoading=true / allowed=false,
+  // exits early, and never re-runs because `allowed` stays false until auth
+  // resolves — meaning the listener is never registered and messages only
+  // appear after a manual reload.
   useEffect(() => {
-    if (!allowed) return;
+    if (authLoading || !allowed) return;
 
     const q = query(
       collection(db, "chats"),
-      orderBy("createdAt", "asc")
+      where("context", "==", "admin"),
+      // Sort by the client-side epoch timestamp instead of serverTimestamp.
+      // serverTimestamp() is null on the sender's client until the Firestore
+      // write round-trips back, so orderBy("createdAt") skips the just-sent
+      // message until the server confirms it — causing the "must reload to
+      // see own message" bug. `timestamp` is set to Date.now() synchronously
+      // before addDoc returns, so it's always present immediately.
+      orderBy("timestamp", "asc")
     );
 
     const unsub = onSnapshot(
@@ -56,15 +67,14 @@ export default function CommunicationModule({ context }: Props) {
           id: d.id,
           ...(d.data() as Omit<ChatMessage, "id">),
         }));
-        // Show only messages belonging to this context channel
-        setMessages(all.filter((m) => m.context === context));
+        setMessages(all);
         setLoading(false);
       },
       () => setLoading(false)
     );
 
     return unsub;
-  }, [allowed, context]);
+  }, [authLoading, allowed]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -77,18 +87,34 @@ export default function CommunicationModule({ context }: Props) {
     setSending(true);
     setError(null);
     try {
-      await addDoc(collection(db, "chats"), {
+      const ref = await addDoc(collection(db, "chats"), {
         text: text.trim(),
         senderUid: profile.uid,
         senderName: `${profile.firstName} ${profile.lastName}`,
         senderRole: profile.role,
-        context,
+        context: "admin",
         createdAt: serverTimestamp(),
         timestamp: Date.now(),
       });
+
+      // addDoc() resolves as soon as the write lands in the local optimistic
+      // cache — it does NOT mean the server actually accepted it. If a
+      // Firestore security rule rejects the write, the SDK rolls the local
+      // copy back silently and this catch block never fires, because the
+      // promise above already resolved "successfully." That rollback is
+      // exactly what looks like "I sent a message and it vanished" for your
+      // own messages specifically (messages from others never go through
+      // this optimistic-then-maybe-rolled-back path, since they only ever
+      // arrive via the server's authoritative push). Forcing a server read
+      // turns a silent rollback into a real, catchable error.
+      await getDocFromServer(ref);
+
       setText("");
-    } catch {
-      setError("Failed to send message. Please try again.");
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      setError(
+        "Failed to send message. This may be a permissions issue — please contact your developer."
+      );
     } finally {
       setSending(false);
     }
@@ -102,7 +128,7 @@ export default function CommunicationModule({ context }: Props) {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  if (!allowed) {
+  if (denied) {
     return (
       <div className="p-6 text-red-400 text-sm">
         Access denied. Admins and Developers only.
@@ -110,8 +136,23 @@ export default function CommunicationModule({ context }: Props) {
     );
   }
 
+  if (authLoading) {
+    return (
+      <div className="p-6 text-sm" style={{ color: "var(--c-text-muted)" }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (!allowed && (profileError || !profile)) {
+    return (
+      <div className="p-6 text-sm" style={{ color: "var(--c-text-muted)" }}>
+        Couldn't verify your role right now. Try refreshing the page.
+      </div>
+    );
+  }
+
   const formatTime = (msg: ChatMessage) => {
-    // Firestore Timestamps have .toDate(); fall back to epoch ms
     try {
       const ts = msg.createdAt as { toDate?: () => Date };
       const d = ts?.toDate ? ts.toDate() : new Date(msg.timestamp ?? 0);
@@ -129,7 +170,7 @@ export default function CommunicationModule({ context }: Props) {
       <div className="px-5 py-4 border-b border-white/10 flex items-center gap-3">
         <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
         <h2 className="text-white font-semibold text-sm tracking-wide">
-          {context === "admin" ? "Admin" : "Developer"} Communication Channel
+          Communication Channel
         </h2>
         <span className="ml-auto text-xs text-white/40">
           {messages.length} message{messages.length !== 1 ? "s" : ""}

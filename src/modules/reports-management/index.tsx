@@ -24,13 +24,21 @@ interface ReportCounts {
 }
 
 export default function ReportsManagementModule() {
-  const { profile } = useAuth();
+  const { profile, profileError, loading: authLoading } = useAuth();
   const [counts,  setCounts]  = useState<ReportCounts | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile || profile.role !== "admin") {
+    // Only stop and refuse to fetch once we've CONFIRMED the signed-in
+    // user is not an admin. A profile that hasn't resolved yet (still
+    // null while auth is loading, or null due to a transient
+    // profileError) should not tear down data we may already have.
+    if (profile && profile.role !== "admin") {
       setLoading(false);
+      return;
+    }
+    if (!profile) {
+      // Unresolved/erroring — wait rather than fetch with no profile yet.
       return;
     }
 
@@ -114,6 +122,14 @@ export default function ReportsManagementModule() {
     return (
       <div className="dash-card p-6 text-center" style={{ color: "var(--c-text-muted)" }}>
         Access restricted to admins.
+      </div>
+    );
+  }
+
+  if (!profile && !authLoading && profileError) {
+    return (
+      <div className="dash-card p-6 text-center" style={{ color: "var(--c-text-muted)" }}>
+        Couldn't verify your role right now. Try refreshing the page.
       </div>
     );
   }

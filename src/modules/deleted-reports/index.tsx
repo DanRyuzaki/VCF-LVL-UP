@@ -83,10 +83,23 @@ function AccessDenied() {
   );
 }
 
+function UnableToVerify() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "320px", gap: "16px", color: "var(--c-text-dim)" }}>
+      <IconLock size={40} style={{ opacity: 0.4 }} />
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--c-text)", marginBottom: "6px" }}>Couldn't Verify Role</p>
+        <p style={{ fontSize: "13px", lineHeight: 1.6 }}>We couldn't confirm your access level right now. Try refreshing the page.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function DeletedReportsModule() {
   // ── Defense-in-depth: admin + developer only ──
-  const { profile } = useAuth();
+  const { profile, profileError, loading: authLoading } = useAuth();
   if (profile && profile.role !== "admin" && profile.role !== "developer") return <AccessDenied />;
+  if (!profile && !authLoading && profileError) return <UnableToVerify />;
 
   return <DeletedReportsInner />;
 }

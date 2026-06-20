@@ -9,10 +9,13 @@ import ScheduleManagementModule from "@/modules/schedule-management";
 import BracketManagementModule from "@/modules/bracket-management";
 import AnnouncementManagementModule from "@/modules/announcement-management";
 import LivestreamManagementModule from "@/modules/livestream-management";
+import ChatManagementModule from "@/modules/chat-management";
+import { useAuth } from "@/lib/auth-context";
 
 const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   profile:       { title: "MY PROFILE",    subtitle: "View and update your player profile" },
   team:          { title: "MY TEAM",       subtitle: "Team information and roster" },
+  chat:          { title: "LEADER CHAT",   subtitle: "Direct chat channel with the organizer" },
   schedule:      { title: "SCHEDULE",      subtitle: "Upcoming matches and events" },
   brackets:      { title: "BRACKETS",      subtitle: "MLBB Championship — Season 4" },
   announcements: { title: "ANNOUNCEMENTS", subtitle: "Official updates from organizers" },
@@ -20,13 +23,19 @@ const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
 };
 
 export default function GamerDashboard() {
+  const { profile } = useAuth();
   const [section, setSection] = useState("profile");
   const meta = SECTION_TITLES[section] ?? { title: section.toUpperCase(), subtitle: "" };
+
+  // The Leader Chat channel is only meaningful for team leaders — regular
+  // team members and free agents don't get a seat in it.
+  const isTeamLeader = profile?.gamerType === "team_leader";
 
   const renderSection = () => {
     switch (section) {
       case "profile":       return <ProfileManagementModule />;
       case "team":          return <TeamViewerModule />;
+      case "chat":          return <ChatManagementModule />;
       case "schedule":      return <ScheduleManagementModule />;
       case "brackets":      return <BracketManagementModule showActions={false} />;
       case "announcements": return <AnnouncementManagementModule showSubmitForm={false} />;
@@ -37,7 +46,12 @@ export default function GamerDashboard() {
 
   return (
     <div className="flex">
-      <Sidebar role="gamer" activeSection={section} onSectionChange={setSection} />
+      <Sidebar
+        role="gamer"
+        activeSection={section}
+        onSectionChange={setSection}
+        hiddenSections={isTeamLeader ? [] : ["chat"]}
+      />
       <div className="flex-1 flex flex-col min-h-screen">
         <DashboardHeader role="gamer" />
         <main

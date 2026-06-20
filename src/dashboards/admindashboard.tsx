@@ -39,7 +39,7 @@ export default function AdminDashboard() {
       case "calendar":          return <CalendarManagementModule showSubmitForm showApproveActions />;
       case "reports":           return <ReportsManagementModule />;
       case "deleted-reports":   return <DeletedReportsModule />;
-      case "communication":     return <CommunicationModule context="admin" />;
+      case "communication":     return <CommunicationModule />;
       default:                  return null;
     }
   };

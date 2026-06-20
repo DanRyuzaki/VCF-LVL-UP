@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { DynamicIcon, IconLogout } from "@/components/shared/icons";
 import { UserRole } from "@/types/user";
 import { ROLE_CONFIG } from "@/lib/roles";
@@ -8,13 +7,42 @@ interface SidebarProps {
   role: UserRole;
   activeSection: string;
   onSectionChange: (section: string) => void;
+  /** Section keys to omit from this user's nav, e.g. team-leader-only items
+   *  for a gamer account that isn't a team leader. ROLE_CONFIG is static
+   *  per-role, so per-user filtering happens here instead. */
+  hiddenSections?: string[];
 }
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
 
-export default function Sidebar({ role, activeSection, onSectionChange }: SidebarProps) {
+// Must match the cookie name set by login-form.tsx and read by src/middleware.ts.
+const ROLE_COOKIE_NAME = "vcf_role";
+
+/**
+ * Clears the `vcf_role` cookie that the Edge middleware (src/middleware.ts)
+ * reads for route guarding. Setting max-age=0 deletes the cookie immediately.
+ * Must be called on every sign-out path — if this is skipped, the middleware
+ * will still see a (now-stale) role cookie and may let a signed-out browser
+ * back into a dashboard route until the cookie naturally expires.
+ */
+function clearRoleCookie() {
+  document.cookie = `${ROLE_COOKIE_NAME}=; path=/; max-age=0; samesite=lax`;
+}
+
+export default function Sidebar({ role, activeSection, onSectionChange, hiddenSections = [] }: SidebarProps) {
   const config = ROLE_CONFIG[role];
+  const visibleItems = config.sidebarItems.filter((item) => !hiddenSections.includes(item.section));
+  const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+
+  const handleSignOut = async () => {
+    clearRoleCookie();
+    await auth.signOut();
+    router.push("/");
+  };
 
   useEffect(() => {
     const updateCount = () => {
@@ -174,7 +202,7 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
           </div>
 
           <nav>
-            {config.sidebarItems.map((item: { section: string; icon: string; label: string }) => {
+            {visibleItems.map((item: { section: string; icon: string; label: string }) => {
               const isActive = activeSection === item.section;
               return (
                 <button
@@ -378,8 +406,8 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
 
 
           {/* Sign Out — full width matching sidebar padding */}
-          <Link
-            href="/login"
+          <button
+            onClick={() => setShowSignOutConfirm(true)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -394,9 +422,10 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
               borderRadius: "6px",
               border: "1px solid var(--c-border)",
               color: "var(--c-text-dim)",
-              textDecoration: "none",
+              backgroundColor: "transparent",
               transition: "all 0.15s ease",
               boxSizing: "border-box",
+              cursor: "pointer",
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.color = "var(--c-text)";
@@ -411,7 +440,97 @@ export default function Sidebar({ role, activeSection, onSectionChange }: Sideba
           >
             <IconLogout size={12} />
             Sign Out
-          </Link>
+          </button>
+
+          {/* Sign out confirmation modal */}
+          {showSignOutConfirm && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 100,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "16px",
+                backgroundColor: "rgba(0,0,0,0.6)",
+                backdropFilter: "blur(2px)",
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: "360px",
+                  borderRadius: "12px",
+                  padding: "24px",
+                  backgroundColor: "var(--c-surface)",
+                  border: "1px solid var(--c-border)",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+                }}
+              >
+                <h2
+                  style={{
+                    fontFamily: "'Rajdhani', sans-serif",
+                    fontSize: "1rem",
+                    fontWeight: 800,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--c-text)",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Sign Out
+                </h2>
+                <p style={{ fontSize: "0.875rem", color: "var(--c-text-dim)", marginBottom: "24px" }}>
+                  Are you sure you want to sign out?
+                </p>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    onClick={() => setShowSignOutConfirm(false)}
+                    style={{
+                      flex: 1,
+                      padding: "10px",
+                      fontSize: "0.6875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      fontWeight: 600,
+                      borderRadius: "8px",
+                      border: "1px solid var(--c-border)",
+                      color: "var(--c-text-dim)",
+                      backgroundColor: "transparent",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "var(--c-text-dim)")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "var(--c-border)")}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    style={{
+                      flex: 1,
+                      padding: "10px",
+                      fontSize: "0.6875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      fontWeight: 600,
+                      borderRadius: "8px",
+                      border: "none",
+                      color: "#ffffff",
+                      backgroundColor: "var(--c-accent)",
+                      cursor: "pointer",
+                      transition: "background-color 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent-hover)")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent)")}
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 

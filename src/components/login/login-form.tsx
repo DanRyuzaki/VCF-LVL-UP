@@ -12,6 +12,35 @@ import { useTheme } from "@/lib/theme-context";
 
 const CONSENT_KEY = "vcf_consent_session";
 
+// Must match the cookie name read by src/middleware.ts.
+const ROLE_COOKIE_NAME = "vcf_role";
+// 7 days, in seconds — a routing convenience window, not a security token
+// lifetime. Firestore rules are the real auth boundary, so a slightly stale
+// cookie has no security consequence: worst case the user is bounced to
+// /login by the middleware and simply signs in again.
+const ROLE_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+
+/**
+ * Sets the `vcf_role` cookie consumed by the Edge middleware (src/middleware.ts)
+ * for server-side route guarding. Deliberately NOT httpOnly — it must be
+ * writable from client-side JS, both here (on login) and in sidebar.tsx /
+ * navbar.tsx (on sign-out). This cookie is a UX routing aid, not a security
+ * token; do not treat its presence as proof of authentication anywhere else
+ * in the app.
+ */
+function setRoleCookie(role: UserRole) {
+  const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+  document.cookie = [
+    `${ROLE_COOKIE_NAME}=${role}`,
+    "path=/",
+    `max-age=${ROLE_COOKIE_MAX_AGE}`,
+    "samesite=lax",
+    isHttps ? "secure" : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+}
+
 function validateEmail(email: string): string {
   if (!email) return "Email address is required.";
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -108,7 +137,12 @@ export default function LoginForm() {
       // 5. Update lastLogin timestamp (non-blocking — don't await, failure is OK)
       updateDoc(doc(db, "users", uid), { lastLogin: serverTimestamp() }).catch(() => {});
 
-      // 6. Route to the correct dashboard
+      // 6. Set the role-routing cookie for the Edge middleware BEFORE
+      //    navigating, so the very first request to /{role} already carries
+      //    a cookie that matches the destination route.
+      setRoleCookie(profile.role);
+
+      // 7. Route to the correct dashboard
       router.push(`/${profile.role}`);
     } catch (err: unknown) {
       // Map Firebase Auth error codes to human-friendly messages

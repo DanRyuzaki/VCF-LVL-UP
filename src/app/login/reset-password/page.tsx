@@ -1,15 +1,9 @@
 "use client";
+// src/app/login/reset-password/page.tsx
 import { useState } from "react";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useTheme } from "@/lib/theme-context";
-
-/* ── Mock "database" of known emails ── */
-const KNOWN_EMAILS = [
-  "marco@faith.com",
-  "john@faith.com",
-  "ana@faith.com",
-  "ben@faith.com",
-  "liza@faith.com",
-];
 
 function validateEmail(email: string): string {
   if (!email) return "Email address is required.";
@@ -99,7 +93,15 @@ function ErrorIcon() {
 }
 
 /* ── Result Modal ── */
-function ResultModal({ type, onClose }: { type: "success" | "error"; onClose: () => void }) {
+function ResultModal({
+  type,
+  message,
+  onClose,
+}: {
+  type: "success" | "error";
+  message: string;
+  onClose: () => void;
+}) {
   const isSuccess = type === "success";
 
   return (
@@ -147,14 +149,12 @@ function ResultModal({ type, onClose }: { type: "success" | "error"; onClose: ()
             marginBottom: "12px",
           }}
         >
-          {isSuccess ? "Password Reset Link Sent" : "Email Address Not Found"}
+          {isSuccess ? "Password Reset Link Sent" : "Something Went Wrong"}
         </h3>
 
         {/* Message */}
         <p style={{ fontSize: "13px", lineHeight: 1.7, color: "var(--c-text-muted)", marginBottom: "28px" }}>
-          {isSuccess
-            ? "A password reset confirmation link has been sent to your email inbox. If you do not receive it, please check your Spam folder."
-            : "The email address you entered was not found in the database. Please try again."}
+          {message}
         </p>
 
         {/* Button */}
@@ -201,27 +201,60 @@ function ResultModal({ type, onClose }: { type: "success" | "error"; onClose: ()
 
 /* ══════════════════════════════════════════════════
    RESET PASSWORD PAGE
-   ══════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════
+
+   Calls the real Firebase Auth `sendPasswordResetEmail`. By design, Firebase
+   returns success for this call regardless of whether the email belongs to
+   an account — this is Firebase's own anti-account-enumeration behavior, not
+   a shortcut taken here. We mirror that: the UI shows the same "check your
+   inbox" success state whether or not the address is registered, and never
+   states "this email was not found" (the old mock did, which leaked account
+   existence). Only real failures — malformed input, rate limiting, network
+   issues — produce the error state. */
 export default function ResetPasswordPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [touched, setTouched] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalType, setModalType] = useState<"success" | "error" | null>(null);
+  const [modalMessage, setModalMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
     const err = validateEmail(email);
     setEmailError(err);
     if (err) return;
 
-    // Check against mock "database"
-    if (KNOWN_EMAILS.includes(email.toLowerCase())) {
+    setIsSubmitting(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      // Firebase intentionally does not reveal whether `email` is registered.
+      // Always show the same success state for any well-formed address that
+      // Firebase accepted, to avoid leaking which emails have accounts.
+      setModalMessage(
+        "If an account exists for that email address, a password reset link has been sent. Please check your inbox (and Spam folder)."
+      );
       setModalType("success");
-    } else {
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? "";
+      if (code === "auth/invalid-email") {
+        setModalMessage("That email address isn't formatted correctly. Please check it and try again.");
+      } else if (code === "auth/too-many-requests") {
+        setModalMessage("Too many requests from this device. Please wait a few minutes and try again.");
+      } else if (code === "auth/network-request-failed") {
+        setModalMessage("Network error. Please check your connection and try again.");
+      } else {
+        // Includes auth/user-not-found: deliberately given the same generic
+        // message as any other failure so the UI never confirms or denies
+        // that a given email has an account.
+        setModalMessage("We couldn't send the reset link right now. Please try again in a moment.");
+      }
       setModalType("error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -246,7 +279,9 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      {modalType && <ResultModal type={modalType} onClose={handleModalClose} />}
+      {modalType && (
+        <ResultModal type={modalType} message={modalMessage} onClose={handleModalClose} />
+      )}
 
       <div
         className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden"
@@ -316,6 +351,7 @@ export default function ResetPasswordPage() {
                   onFocus={(e) =>
                     ((e.target as HTMLInputElement).style.borderColor = emailError ? "#EF4444" : "var(--c-accent)")
                   }
+                  disabled={isSubmitting}
                 />
                 {emailError && (
                   <p id="reset-email-error" className="text-xs mt-1.5 flex items-center gap-1" style={{ color: "#EF4444" }}>
@@ -330,16 +366,20 @@ export default function ResetPasswordPage() {
               {/* Submit */}
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full text-white font-semibold uppercase tracking-widest text-sm py-3 rounded-lg transition-colors"
-                style={{ backgroundColor: "var(--c-accent)" }}
-                onMouseEnter={(e) =>
-                  ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent-hover)")
-                }
-                onMouseLeave={(e) =>
-                  ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent)")
-                }
+                style={{
+                  backgroundColor: isSubmitting ? "rgba(255,70,85,0.5)" : "var(--c-accent)",
+                  cursor: isSubmitting ? "not-allowed" : "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSubmitting) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSubmitting) (e.currentTarget as HTMLElement).style.backgroundColor = "var(--c-accent)";
+                }}
               >
-                Submit
+                {isSubmitting ? "Sending…" : "Submit"}
               </button>
             </form>
 

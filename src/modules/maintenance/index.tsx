@@ -49,12 +49,16 @@ const ACTIONS: MaintenanceAction[] = [
 ];
 
 export default function MaintenanceModule() {
-  const { profile } = useAuth();
+  const { profile, loading } = useAuth();
 
   const [statuses, setStatuses] = useState<Record<string, ActionStatus>>(
     Object.fromEntries(ACTIONS.map((a) => [a.id, "idle"]))
   );
   const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  if (loading) {
+    return <div className="p-6 text-sm" style={{ color: "var(--c-text-dim)" }}>Loading…</div>;
+  }
 
   const allowed = profile?.role === "developer";
 

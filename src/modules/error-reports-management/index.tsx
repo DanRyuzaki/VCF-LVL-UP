@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import {
   collection,
-  getDocs,
+  onSnapshot,
   query,
   orderBy,
   limit,
@@ -13,9 +13,6 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import { IconLock } from "@/components/shared/icons";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 interface ErrorReport {
   id: string;
   time: string;
@@ -24,9 +21,6 @@ interface ErrorReport {
   severity: "High" | "Medium" | "Low";
 }
 
-// ---------------------------------------------------------------------------
-// Access Denied guard — developer only
-// ---------------------------------------------------------------------------
 function AccessDenied() {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "320px", gap: "16px", color: "var(--c-text-dim)" }}>
@@ -48,9 +42,6 @@ function sevBg(s: string) {
   return s === "Low" ? "var(--c-surface3)" : undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Module
-// ---------------------------------------------------------------------------
 export default function ErrorReportsManagementModule() {
   const { profile } = useAuth();
   if (profile && profile.role !== "developer") return <AccessDenied />;
@@ -58,22 +49,23 @@ export default function ErrorReportsManagementModule() {
 }
 
 function ErrorReportsInner() {
-  const [errors, setErrors] = useState<ErrorReport[]>([]);
+  const [errors, setErrors]     = useState<ErrorReport[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [filterSev, setFilterSev] = useState("ALL");
 
   useEffect(() => {
-    async function load() {
-      try {
-        // audit_logs collection filtered to type=ERROR
-        const q = query(
-          collection(db, "audit_logs"),
-          where("type", "==", "ERROR"),
-          orderBy("createdAt", "desc"),
-          limit(100)
-        );
-        const snap = await getDocs(q);
+    const q = query(
+      collection(db, "audit_logs"),
+      where("type", "==", "ERROR"),
+      orderBy("createdAt", "desc"),
+      limit(100)
+    );
+
+    // onSnapshot instead of getDocs — new errors appear in real time
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
         const rows: ErrorReport[] = snap.docs.map((d) => {
           const data = d.data();
           const ts = data.createdAt instanceof Timestamp
@@ -88,14 +80,17 @@ function ErrorReportsInner() {
           };
         });
         setErrors(rows);
-      } catch (err) {
-        console.error("error-reports: failed to load", err);
+        setLoadError("");
+        setHydrated(true);
+      },
+      (err) => {
+        console.error("error-reports: snapshot error", err);
         setLoadError("Could not load error reports. The audit_logs collection may not exist yet.");
-      } finally {
         setHydrated(true);
       }
-    }
-    load();
+    );
+
+    return unsub;
   }, []);
 
   const filtered = filterSev === "ALL" ? errors : errors.filter((e) => e.severity === filterSev);

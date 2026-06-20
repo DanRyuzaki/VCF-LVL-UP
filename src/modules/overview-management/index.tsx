@@ -17,12 +17,11 @@ export default function OverviewManagementModule() {
 
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
 
-  // Read live announcements (organizer's own submissions, pending or approved)
   useEffect(() => {
     const q = query(
       collection(db, "announcements"),
       where("status", "in", ["pending", "approved"]),
-      orderBy("submittedAt", "desc")
+      orderBy("createdAt", "desc")
     );
     const unsub = onSnapshot(
       q,
@@ -40,8 +39,12 @@ export default function OverviewManagementModule() {
     return () => unsub();
   }, []);
 
+  // Only count tournaments that are NOT completed as "active"
+  const activeTournaments = tournaments.filter((t) => t.status !== "completed");
   const pendingMatchCount = matchesState.filter((m) => m.status === "pending").length;
   const completedMatches  = matchesState.filter((m) => m.status === "completed").slice(-3);
+  // Teams eligible to join tournaments (5+ players)
+  const eligibleTeams     = teams.filter((t) => t.players.length >= 5);
 
   if (loading) {
     return (
@@ -52,10 +55,10 @@ export default function OverviewManagementModule() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard value={tournaments.length}    label="Active Tournaments" accent="red" />
-        <StatCard value={teams.length}          label="Teams Registered"   accent="teal" />
-        <StatCard value={draftedPlayers.length} label="Drafted Players"    accent="purple" />
-        <StatCard value={pendingMatchCount}     label="Matches Upcoming" />
+        <StatCard value={activeTournaments.length} label="Active Tournaments" accent="red" />
+        <StatCard value={eligibleTeams.length}     label="Eligible Teams"     accent="teal" />
+        <StatCard value={draftedPlayers.length}    label="Drafted Players"    accent="purple" />
+        <StatCard value={pendingMatchCount}         label="Matches Upcoming" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -84,7 +87,7 @@ export default function OverviewManagementModule() {
         </div>
 
         <div className="dash-card p-5">
-          <div className="dash-section-title">Match Result Activities</div>
+          <div className="dash-section-title">Recent Match Results</div>
           <div className="space-y-3">
             {completedMatches.length === 0 ? (
               <div className="text-xs text-[var(--c-text-muted)] py-4">No completed matches yet.</div>
@@ -108,6 +111,41 @@ export default function OverviewManagementModule() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Tournament Status Summary */}
+      <div className="dash-card p-5">
+        <div className="dash-section-title">Tournament Status Summary</div>
+        {tournaments.length === 0 ? (
+          <div className="text-xs text-[var(--c-text-muted)] py-4">No tournaments created yet.</div>
+        ) : (
+          <div className="space-y-2 mt-2">
+            {tournaments.map((t) => (
+              <div key={t.id} className="flex items-center justify-between py-2 border-b border-[var(--c-border)] last:border-0">
+                <div>
+                  <span className="text-xs font-semibold text-[var(--c-text)]">{t.name}</span>
+                  <span className="ml-2 text-[10px] text-[var(--c-text-muted)]">{t.game} · {t.format}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-[var(--c-text-muted)]">
+                    {t.teamsList.length}/{t.maxTeams} teams
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
+                      t.status === "completed"
+                        ? "bg-[#00F5D4]/15 text-[#00F5D4]"
+                        : t.status === "ongoing"
+                        ? "bg-[#FACC15]/15 text-[#FACC15]"
+                        : "bg-[#8B5CF6]/15 text-[#8B5CF6]"
+                    }`}
+                  >
+                    {t.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

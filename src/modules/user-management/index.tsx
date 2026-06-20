@@ -12,15 +12,24 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  where,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
+import { fsAddPlayer } from "@/lib/organizer-context";
 import { IconSearch, IconPlus } from "@/components/shared/icons";
 import AddUserModal from "@/modules/user-management/add-user-modal";
 import AddAdminModal from "@/modules/user-management/add-admin-modal";
 import ViewUserModal from "@/modules/user-management/view-user-modal";
 import DeleteConfirmModal from "@/modules/user-management/delete-confirm-modal";
 import ModalBackdrop from "@/components/shared/modal-backdrop";
+import {
+  fsDeletePlayer,
+  fsUpdatePlayer,
+  fsUpdateTeam,
+  fsDeleteTeam,
+  fsUpdateUserTeamId,
+} from "@/lib/organizer-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,6 +42,8 @@ interface UserRow {
   status: string;
   created: string;
   lastLogin: string;
+  /** Set when this user is the head of a team (populated lazily before delete) */
+  leadsTeamName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +86,7 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [recoveryNotice, setRecoveryNotice] = useState("");
 
   // UI state
   const [search, setSearch] = useState("");
@@ -128,30 +140,21 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
   }, []);
 
   // ------------------------------------------------------------------
-  // Create user — Firebase Auth + Firestore write
+  // Create user — Firebase Auth + Firestore write.
+  // If the Auth account already exists (orphaned from a previous deletion),
+  // we recover it by looking up the original UID from deleted_user_reports,
+  // then recreating the users + players docs without touching Auth at all.
+  // The gamer's existing password is preserved; they can reset it from the
+  // login page if needed.
   // ------------------------------------------------------------------
   const handleAddUser = async (data: Record<string, string>) => {
     setSaving(true);
     setSaveError("");
 
-    try {
-      // 1. Create Firebase Auth account
-      const credential = await createUserWithEmailAndPassword(
-        auth,
-        data.email,
-        data.tempPassword
-      );
-      const uid = credential.user.uid;
+    // Shared helper — writes users doc + players doc given a known UID
+    const writeFirestoreDocs = async (uid: string, roleKey: string) => {
+      const fullName = `${data.firstName}${data.middleInitial ? ` ${data.middleInitial}.` : ""} ${data.lastName}`.trim();
 
-      // 2. Determine the role string (lowercase for Firestore)
-      const roleMap: Record<string, string> = {
-        Organizer: "organizer",
-        Gamer: "gamer",
-        Admin: "admin",
-      };
-      const roleKey = roleMap[data.role] ?? "gamer";
-
-      // 3. Write Firestore user document
       const userDoc: Record<string, unknown> = {
         uid,
         email: data.email,
@@ -168,10 +171,24 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
         lastLogin: null,
         createdBy: currentUserProfile?.uid ?? null,
       };
-
       await setDoc(doc(db, "users", uid), userDoc);
 
-      // 4. Optimistically add to local list
+      if (roleKey === "gamer") {
+        await fsAddPlayer({
+          name: fullName,
+          email: data.email,
+          ign: fullName,
+          game: "MLBB",
+          role: "Unassigned",
+          rank: "Unranked",
+          winRate: "—",
+          kda: "—",
+          history: [],
+          drafted: false,
+        });
+      }
+
+      // Optimistically add to local list
       const mi = data.middleInitial ? ` ${data.middleInitial}.` : "";
       const newRow: UserRow = {
         id: uid,
@@ -183,24 +200,129 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
         lastLogin: "—",
       };
       setUsers((prev) => [newRow, ...prev]);
+    };
+
+    const roleMap: Record<string, string> = {
+      Organizer: "organizer",
+      Gamer: "gamer",
+      Admin: "admin",
+    };
+    const roleKey = roleMap[data.role] ?? "gamer";
+
+    try {
+      // ── Normal path: create a fresh Firebase Auth account ──
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        data.email,
+        data.tempPassword
+      );
+      await writeFirestoreDocs(credential.user.uid, roleKey);
+
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? "";
+
       if (code === "auth/email-already-in-use") {
-        setSaveError("That email is already registered.");
+        // ── Recovery path: Auth account exists but Firestore docs were deleted ──
+        // Check if a users doc already exists for this email (truly duplicate)
+        const existingUserSnap = await getDocs(
+          query(collection(db, "users"), where("email", "==", data.email))
+        );
+        if (!existingUserSnap.empty) {
+          // A live users doc exists — this is a genuine duplicate, block it
+          setSaveError("That email is already registered to an active account.");
+          setSaving(false);
+          return;
+        }
+
+        // No users doc → orphaned Auth account. Look up the original UID
+        // from the deletion report we wrote when the account was deleted.
+        const reportSnap = await getDocs(
+          query(collection(db, "deleted_user_reports"), orderBy("createdAt", "desc"))
+        );
+
+        let orphanedUid: string | null = null;
+        for (const reportDoc of reportSnap.docs) {
+          const deletedUsers = reportDoc.data().deletedUsers as Array<{ id: string; email: string }> ?? [];
+          const match = deletedUsers.find((u) => u.email === data.email);
+          if (match) {
+            orphanedUid = match.id;
+            break;
+          }
+        }
+
+        if (!orphanedUid) {
+          // Auth account exists but we have no deletion record for it —
+          // this account was created outside the app (e.g. directly in
+          // Firebase console). We can't recover the UID client-side.
+          setSaveError(
+            "This email is already registered in the system but has no deletion record. Please contact a developer to recover this account."
+          );
+          setSaving(false);
+          return;
+        }
+
+        // We have the UID — recreate the Firestore docs without touching Auth
+        try {
+          await writeFirestoreDocs(orphanedUid, roleKey);
+          // Show a notice so the admin knows what happened
+          setRecoveryNotice(
+            `Account recovered. "${data.email}" already existed in Auth — their password was kept as-is. They can reset it from the login page if needed.`
+          );
+        } catch (recoveryErr) {
+          console.error("Failed to recover orphaned account:", recoveryErr);
+          setSaveError("Found the orphaned account but failed to recreate the profile. Please try again.");
+        }
+        setSaving(false);
+        return;
+
       } else if (code === "auth/weak-password") {
         setSaveError("Password must be at least 6 characters.");
       } else {
         setSaveError("Failed to create user. Please try again.");
         console.error(err);
       }
-      return; // don't close modal — let the user fix it
-    } finally {
       setSaving(false);
+      return;
     }
+
+    setSaving(false);
   };
 
   // ------------------------------------------------------------------
-  // Delete — writes deletion report to Firestore, removes from local list
+  // Pre-deletion leadership check — enriches UserRow with leadsTeamName
+  // so the confirm modal can warn the admin about team cascade effects.
+  // ------------------------------------------------------------------
+  const enrichWithLeadership = async (rows: UserRow[]): Promise<UserRow[]> => {
+    // Fetch all teams once (small collection, fine to read up-front)
+    const teamsSnap = await getDocs(collection(db, "teams"));
+    const enriched = await Promise.all(rows.map(async (u) => {
+      if (u.role !== "Gamer") return u; // only gamers can be team leaders
+      // Find the players doc for this user by email
+      const playerSnap = await getDocs(
+        query(collection(db, "players"), where("email", "==", u.email))
+      );
+      if (playerSnap.empty) return u;
+      const playerDocId = playerSnap.docs[0].id;
+      // Check if any team has this player as head
+      const leaderTeam = teamsSnap.docs.find(
+        (t) => t.data().headUid === playerDocId
+      );
+      return leaderTeam ? { ...u, leadsTeamName: leaderTeam.data().name as string } : u;
+    }));
+    return enriched;
+  };
+
+  // ------------------------------------------------------------------
+  // Open delete confirm — run leadership check first so the modal
+  // can warn the admin before they commit.
+  // ------------------------------------------------------------------
+  const openDeleteConfirm = async (rows: UserRow[]) => {
+    const enriched = await enrichWithLeadership(rows);
+    setUsersToDelete(enriched);
+  };
+
+  // ------------------------------------------------------------------
+  // Delete — cascade: players doc, team (if leader), then users doc
   // ------------------------------------------------------------------
   const handleDeleteConfirm = async (reason: string) => {
     if (!usersToDelete || usersToDelete.length === 0) return;
@@ -212,44 +334,124 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
       ? `${currentUserProfile.firstName}${currentUserProfile.middleInitial ? ` ${currentUserProfile.middleInitial}.` : ""} ${currentUserProfile.lastName}`.trim()
       : "Admin";
 
-    // 1. Delete each user's Firestore profile doc (client SDK; Auth account requires Admin SDK)
-    const idsToDelete = usersToDelete.map((u) => u.id);
-    await Promise.allSettled(
-      idsToDelete.map((uid) => deleteDoc(doc(db, "users", uid)))
-    );
-    // NOTE: Firebase Auth account is NOT deleted here — the client SDK cannot delete
-    // another user's Auth record. A Cloud Function triggered on users/{uid} deletion,
-    // or an Admin SDK call from a secure backend, is required for full account removal.
+    // Cascade for each deleted user:
+    // 1. Find their players doc (if gamer)
+    // 2a. If they lead a team → delete all team roster members' drafted state,
+    //     then delete the team doc
+    // 2b. If they're a drafted member (not leader) → remove from team roster
+    // 3. Delete the players doc itself
+    // 4. Delete the users doc
+    for (const u of usersToDelete) {
+      try {
+        if (u.role === "Gamer") {
+          // Find the players doc
+          const playerSnap = await getDocs(
+            query(collection(db, "players"), where("email", "==", u.email))
+          );
+
+          if (!playerSnap.empty) {
+            const playerDocRef = playerSnap.docs[0];
+            const playerDocId = playerDocRef.id;
+            const playerData = playerDocRef.data();
+
+            if (u.leadsTeamName) {
+              // ── This gamer leads a team — cascade delete the whole team ──
+              const teamSnap = await getDocs(
+                query(collection(db, "teams"), where("headUid", "==", playerDocId))
+              );
+              for (const teamDoc of teamSnap.docs) {
+                const team = teamDoc.data();
+                // Release all confirmed members (except the leader who's being deleted)
+                for (const memberName of (team.players as string[])) {
+                  if (memberName === playerData.name) continue; // being deleted
+                  const memberSnap = await getDocs(
+                    query(collection(db, "players"), where("name", "==", memberName))
+                  );
+                  if (!memberSnap.empty) {
+                    const mId = memberSnap.docs[0].id;
+                    const mEmail = memberSnap.docs[0].data().email as string | undefined;
+                    await fsUpdatePlayer(mId, { drafted: false, team: undefined });
+                    if (mEmail) await fsUpdateUserTeamId(mEmail, null);
+                  }
+                }
+                // Release pending members
+                for (const pendingName of (team.pendingPlayers as string[] ?? [])) {
+                  const pendingSnap = await getDocs(
+                    query(collection(db, "players"), where("name", "==", pendingName))
+                  );
+                  if (!pendingSnap.empty) {
+                    await fsUpdatePlayer(pendingSnap.docs[0].id, { pendingTeam: undefined });
+                  }
+                }
+                await fsDeleteTeam(teamDoc.id);
+              }
+            } else if (playerData.drafted && playerData.team) {
+              // ── Drafted member (not leader) — remove from roster ──
+              const teamSnap = await getDocs(
+                query(collection(db, "teams"), where("name", "==", playerData.team))
+              );
+              if (!teamSnap.empty) {
+                const teamDoc = teamSnap.docs[0];
+                const currentPlayers = (teamDoc.data().players as string[]).filter(
+                  (n) => n !== playerData.name
+                );
+                await fsUpdateTeam(teamDoc.id, {
+                  players: currentPlayers,
+                  status: currentPlayers.length >= 5 ? "eligible" : "incomplete",
+                });
+              }
+            } else if (playerData.pendingTeam) {
+              // ── Pending member — remove from pending list ──
+              const teamSnap = await getDocs(
+                query(collection(db, "teams"), where("name", "==", playerData.pendingTeam))
+              );
+              if (!teamSnap.empty) {
+                const teamDoc = teamSnap.docs[0];
+                const currentPending = (teamDoc.data().pendingPlayers as string[] ?? []).filter(
+                  (n) => n !== playerData.name
+                );
+                await fsUpdateTeam(teamDoc.id, { pendingPlayers: currentPending });
+              }
+            }
+
+            // Delete the players doc itself
+            await fsDeletePlayer(playerDocId);
+          }
+        }
+
+        // Delete the users doc
+        await deleteDoc(doc(db, "users", u.id));
+      } catch (err) {
+        console.error(`Failed cascade delete for user ${u.email}:`, err);
+      }
+    }
 
     // Optimistically remove from local list
+    const idsToDelete = usersToDelete.map((u) => u.id);
     setUsers((prev) => prev.filter((u) => !idsToDelete.includes(u.id)));
 
-    // 2. Write rich deletion report to Firestore (matches deleted-reports/archived-section schema)
+    // 2. Write rich deletion report to Firestore
     try {
       const year = now.getFullYear();
       const reportId = `DR-${year}-${Date.now()}`;
       const reportDoc = {
         reportId,
-        // Display fields used by the table + detail modal
         dateGenerated: dateStr,
         timeGenerated: timeStr,
         dateDeleted: dateStr,
         timeDeleted: timeStr,
         totalRecordsDeleted: usersToDelete.length,
-        // Who did the deletion
         generatedBy: adminName,
         deletedBy: adminName,
         adminName,
         adminAccountId: currentUserProfile?.uid ?? "",
         adminRole: currentUserProfile?.role ?? "admin",
         adminEmail: currentUserProfile?.email ?? "",
-        // What was deleted
         itemType: "User Account",
         deletedItemName: usersToDelete.length === 1
           ? usersToDelete[0].name
           : `${usersToDelete.length} users`,
         deletionCategory: "User Management",
-        // The deleted users array
         deletedUsers: usersToDelete.map((u) => ({
           id: u.id,
           name: u.name,
@@ -257,6 +459,7 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
           role: u.role,
           statusBeforeDeletion: u.status,
           created: u.created,
+          leadsTeamName: u.leadsTeamName ?? null,
         })),
         reason,
         createdAt: serverTimestamp(),
@@ -264,7 +467,6 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
       await setDoc(doc(db, "deleted_user_reports", reportId), reportDoc);
     } catch (err) {
       console.error("Failed to write deletion report:", err);
-      // Non-blocking — user already removed from local list
     }
 
     setSelectionMode(false);
@@ -316,6 +518,14 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
         </div>
       )}
 
+      {/* Recovery notice banner — shown when an orphaned Auth account was recovered */}
+      {recoveryNotice && (
+        <div style={{ marginBottom: "12px", padding: "10px 14px", backgroundColor: "rgba(0,245,212,0.07)", border: "1px solid rgba(0,245,212,0.25)", borderRadius: "8px", fontSize: "12px", color: "#00F5D4" }}>
+          ✓ {recoveryNotice}
+          <button onClick={() => setRecoveryNotice("")} style={{ float: "right", background: "none", border: "none", color: "#00F5D4", cursor: "pointer" }}>✕</button>
+        </div>
+      )}
+
       {/* Top Header Row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
         <div>
@@ -332,7 +542,7 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
               <button
                 onClick={() => {
                   if (selectedUserIds.length === 0) return;
-                  setUsersToDelete(users.filter((u) => selectedUserIds.includes(u.id)));
+                  openDeleteConfirm(users.filter((u) => selectedUserIds.includes(u.id)));
                 }}
                 disabled={selectedUserIds.length === 0}
                 style={{
@@ -359,7 +569,7 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
           )}
 
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => { setShowAddModal(true); setRecoveryNotice(""); setSaveError(""); }}
             style={{
               display: "flex", alignItems: "center", gap: "6px",
               backgroundColor: "#FF4655", color: "#FFFFFF",
@@ -484,7 +694,7 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
       )}
 
       {viewUser && !usersToDelete && (
-        <ViewUserModal user={viewUser} context={context} onClose={() => setViewUser(null)} onDelete={() => setUsersToDelete([viewUser])} />
+        <ViewUserModal user={viewUser} context={context} onClose={() => setViewUser(null)} onDelete={() => openDeleteConfirm([viewUser])} />
       )}
 
       {usersToDelete && (

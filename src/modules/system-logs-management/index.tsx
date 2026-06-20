@@ -2,31 +2,24 @@
 import { useState, useEffect } from "react";
 import {
   collection,
-  getDocs,
+  onSnapshot,
   query,
   orderBy,
   limit,
-  where,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import { IconLock } from "@/components/shared/icons";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 interface AuditLog {
   id: string;
-  time: string;      // formatted for display
+  time: string;
   type: "INFO" | "WARN" | "ERROR";
   msg: string;
-  rawTs: number;     // for sort stability
+  rawTs: number;
 }
 
-// ---------------------------------------------------------------------------
-// Access Denied guard — developer only
-// ---------------------------------------------------------------------------
 function AccessDenied() {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "320px", gap: "16px", color: "var(--c-text-dim)" }}>
@@ -45,9 +38,6 @@ function logTypeColor(type: string) {
   return "#00F5D4";
 }
 
-// ---------------------------------------------------------------------------
-// Module
-// ---------------------------------------------------------------------------
 export default function SystemLogsManagementModule() {
   const { profile } = useAuth();
   if (profile && profile.role !== "developer") return <AccessDenied />;
@@ -55,22 +45,22 @@ export default function SystemLogsManagementModule() {
 }
 
 function SystemLogsInner() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [logs, setLogs]         = useState<AuditLog[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [filter, setFilter] = useState("ALL");
+  const [filter, setFilter]     = useState("ALL");
 
   useEffect(() => {
-    async function load() {
-      try {
-        // audit_logs collection: { type, message, createdAt, ... }
-        // Falls back to empty list gracefully if collection doesn't exist yet
-        const q = query(
-          collection(db, "audit_logs"),
-          orderBy("createdAt", "desc"),
-          limit(200)
-        );
-        const snap = await getDocs(q);
+    const q = query(
+      collection(db, "audit_logs"),
+      orderBy("createdAt", "desc"),
+      limit(200)
+    );
+
+    // onSnapshot instead of getDocs — new log entries appear in real time
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
         const rows: AuditLog[] = snap.docs.map((d) => {
           const data = d.data();
           const ts = data.createdAt instanceof Timestamp
@@ -86,14 +76,17 @@ function SystemLogsInner() {
           };
         });
         setLogs(rows);
-      } catch (err) {
-        console.error("system-logs: failed to load audit_logs", err);
+        setLoadError("");
+        setHydrated(true);
+      },
+      (err) => {
+        console.error("system-logs: snapshot error", err);
         setLoadError("Could not load system logs. The audit_logs collection may not exist yet.");
-      } finally {
         setHydrated(true);
       }
-    }
-    load();
+    );
+
+    return unsub;
   }, []);
 
   const filtered = filter === "ALL" ? logs : logs.filter((l) => l.type === filter);

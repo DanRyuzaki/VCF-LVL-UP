@@ -24,7 +24,7 @@ function statusStyle(status: string) {
 }
 
 export default function TournamentMonitorModule() {
-  const { profile } = useAuth();
+  const { profile, profileError, loading: authLoading } = useAuth();
   const [tournaments, setTournaments] = useState<TournamentDoc[]>([]);
   const [loading,     setLoading]     = useState(true);
 
@@ -35,9 +35,14 @@ export default function TournamentMonitorModule() {
   const matchesDone      = tournaments.reduce((s, t) => s + t.matchesPlayed, 0);
 
   useEffect(() => {
-    // Admin-only guard
-    if (!profile || profile.role !== "admin") {
+    // Only stop fetching once we've CONFIRMED the user isn't an admin.
+    // An unresolved profile (still loading, or a transient profileError)
+    // should not tear down a listener that may already be running.
+    if (profile && profile.role !== "admin") {
       setLoading(false);
+      return;
+    }
+    if (!profile) {
       return;
     }
 
@@ -59,6 +64,14 @@ export default function TournamentMonitorModule() {
     return (
       <div className="dash-card p-6 text-center" style={{ color: "var(--c-text-muted)" }}>
         Access restricted to admins.
+      </div>
+    );
+  }
+
+  if (!profile && !authLoading && profileError) {
+    return (
+      <div className="dash-card p-6 text-center" style={{ color: "var(--c-text-muted)" }}>
+        Couldn't verify your role right now. Try refreshing the page.
       </div>
     );
   }

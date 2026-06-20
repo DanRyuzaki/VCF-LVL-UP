@@ -1,5 +1,10 @@
 "use client";
 import { useState } from "react";
+import {
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+} from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import ModalBackdrop from "@/components/shared/modal-backdrop";
 
 interface UserToDelete {
@@ -9,25 +14,31 @@ interface UserToDelete {
   role: string;
   status: string;
   created: string;
+  /** If this user is a team leader, this is their team's name */
+  leadsTeamName?: string;
 }
 
 interface DeleteConfirmModalProps {
   usersToDelete: UserToDelete[];
   onClose: () => void;
-  onConfirm: (reason: string, password: string) => void;
+  onConfirm: (reason: string) => void;
 }
 
 export default function DeleteConfirmModal({ usersToDelete, onClose, onConfirm }: DeleteConfirmModalProps) {
   const [reason, setReason] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
   const isMultiple = usersToDelete.length > 1;
   const namesText = isMultiple
     ? `${usersToDelete.length} selected users (${usersToDelete.slice(0, 3).map(u => u.name).join(", ")}${usersToDelete.length > 3 ? "..." : ""})`
     : usersToDelete[0]?.name;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Collect users who lead a team — we need to warn the admin
+  const leaders = usersToDelete.filter((u) => u.leadsTeamName);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim()) {
       setError("Reason for Deletion is required.");
@@ -37,7 +48,35 @@ export default function DeleteConfirmModal({ usersToDelete, onClose, onConfirm }
       setError("Password is required.");
       return;
     }
-    onConfirm(reason, password);
+
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) {
+      setError("Your session has expired. Please sign in again before deleting users.");
+      return;
+    }
+
+    setVerifying(true);
+    setError("");
+
+    try {
+      const credential = EmailAuthProvider.credential(currentUser.email, password);
+      await reauthenticateWithCredential(currentUser, credential);
+    } catch (err: any) {
+      const code = err?.code as string | undefined;
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setError("Incorrect password. Please try again.");
+      } else if (code === "auth/too-many-requests") {
+        setError("Too many attempts. Please wait a moment and try again.");
+      } else {
+        console.error("Password re-authentication failed:", err);
+        setError("Couldn't verify your password right now. Please try again.");
+      }
+      setVerifying(false);
+      return;
+    }
+
+    setVerifying(false);
+    onConfirm(reason);
   };
 
   return (
@@ -47,25 +86,12 @@ export default function DeleteConfirmModal({ usersToDelete, onClose, onConfirm }
         <svg width="48" height="48" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="28" cy="28" r="26" stroke="#FF4655" strokeWidth="1.5" opacity="0.3" />
           <circle cx="28" cy="28" r="22" fill="rgba(255,70,85,0.06)" stroke="#FF4655" strokeWidth="1.5" />
-          <path
-            d="M28 18V32"
-            stroke="#FF4655"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
+          <path d="M28 18V32" stroke="#FF4655" strokeWidth="2.5" strokeLinecap="round" />
           <circle cx="28" cy="37" r="1.5" fill="#FF4655" />
         </svg>
       </div>
 
-      <p
-        style={{
-          textAlign: "center",
-          fontSize: "14px",
-          color: "var(--c-text-muted)",
-          lineHeight: 1.6,
-          marginBottom: "20px",
-        }}
-      >
+      <p style={{ textAlign: "center", fontSize: "14px", color: "var(--c-text-muted)", lineHeight: 1.6, marginBottom: leaders.length > 0 ? "12px" : "20px" }}>
         Are you sure you want to permanently delete{" "}
         <strong style={{ color: "var(--c-text)" }}>{namesText}</strong>?
         <br />
@@ -73,6 +99,29 @@ export default function DeleteConfirmModal({ usersToDelete, onClose, onConfirm }
           This action cannot be undone. All associated data will be permanently removed.
         </span>
       </p>
+
+      {/* ── Team leadership cascade warning ── */}
+      {leaders.length > 0 && (
+        <div style={{
+          marginBottom: "20px",
+          padding: "12px 14px",
+          backgroundColor: "rgba(255, 165, 0, 0.07)",
+          border: "1px solid rgba(255, 165, 0, 0.3)",
+          borderRadius: "8px",
+          fontSize: "12px",
+          color: "#FFA500",
+          lineHeight: 1.6,
+        }}>
+          <strong style={{ display: "block", marginBottom: "6px" }}>⚠️ Team Deletion Warning</strong>
+          {leaders.map((u) => (
+            <div key={u.id} style={{ marginBottom: "4px" }}>
+              <strong>{u.name}</strong> is the team leader of{" "}
+              <strong>{u.leadsTeamName}</strong>. Deleting this account will also{" "}
+              <strong>permanently delete that team</strong> and release all its members back to free agent status.
+            </div>
+          ))}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Reason for Deletion */}
@@ -82,10 +131,7 @@ export default function DeleteConfirmModal({ usersToDelete, onClose, onConfirm }
           </label>
           <textarea
             value={reason}
-            onChange={(e) => {
-              setReason(e.target.value);
-              setError("");
-            }}
+            onChange={(e) => { setReason(e.target.value); setError(""); }}
             placeholder="Please enter the reason for removing this account..."
             rows={3}
             className="dash-input"
@@ -102,10 +148,7 @@ export default function DeleteConfirmModal({ usersToDelete, onClose, onConfirm }
           <input
             type="password"
             value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setError("");
-            }}
+            onChange={(e) => { setPassword(e.target.value); setError(""); }}
             placeholder="Enter your admin password"
             className="dash-input"
             required
@@ -125,20 +168,16 @@ export default function DeleteConfirmModal({ usersToDelete, onClose, onConfirm }
           </button>
           <button
             type="submit"
-            disabled={!reason.trim() || !password}
+            disabled={!reason.trim() || !password || verifying}
             className="text-white text-xs font-semibold uppercase tracking-widest px-5 py-2.5 rounded-lg transition-colors"
             style={{
-              backgroundColor: (!reason.trim() || !password) ? "var(--c-border)" : "#FF4655",
-              cursor: (!reason.trim() || !password) ? "not-allowed" : "pointer"
+              backgroundColor: (!reason.trim() || !password || verifying) ? "var(--c-border)" : "#FF4655",
+              cursor: (!reason.trim() || !password || verifying) ? "not-allowed" : "pointer"
             }}
-            onMouseEnter={(e) => {
-              if (reason.trim() && password) e.currentTarget.style.backgroundColor = "#E53E4D";
-            }}
-            onMouseLeave={(e) => {
-              if (reason.trim() && password) e.currentTarget.style.backgroundColor = "#FF4655";
-            }}
+            onMouseEnter={(e) => { if (reason.trim() && password && !verifying) e.currentTarget.style.backgroundColor = "#E53E4D"; }}
+            onMouseLeave={(e) => { if (reason.trim() && password && !verifying) e.currentTarget.style.backgroundColor = "#FF4655"; }}
           >
-            Confirm Delete
+            {verifying ? "Verifying…" : "Confirm Delete"}
           </button>
         </div>
       </form>

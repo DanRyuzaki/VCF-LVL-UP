@@ -7,29 +7,25 @@ import PageHeader from "@/components/shared/page-header";
 import DashboardHeader from "@/components/shared/dashboard-header";
 import OverviewManagementModule from "@/modules/overview-management";
 import ChatManagementModule from "@/modules/chat-management";
-import TeamManagementModule from "@/modules/team-management";
-import DraftManagementModule from "@/modules/draft-management";
-import FreeAgentManagementModule from "@/modules/free-agent-management";
+import TeamDraftManagementModule from "@/modules/team-management";
+import FreeAgentsDirectoryModule from "@/modules/free-agents-directory";
 import TournamentManagementModule from "@/modules/tournament-management";
 import BracketManagementModule from "@/modules/bracket-management";
-import ResultsManagementModule from "@/modules/results-management";
-import StandingsManagementModule from "@/modules/standings-management";
 import StatsManagementModule from "@/modules/stats-management";
 import AnnouncementManagementModule from "@/modules/announcement-management";
 import OrganizerCalendarModule from "@/modules/organizer-calendar-management";
+import OrganizerScheduleModule from "@/modules/organizer-schedule-management";
 
 
 const SECTION_TITLES: Record<string, { title: string; subtitle: string }> = {
   overview:      { title: "ORGANIZER DASHBOARD",      subtitle: "Tournament management overview" },
   chat:          { title: "COMMUNICATE WITH LEADERS", subtitle: "Direct chat channel with team captains" },
-  teams:         { title: "TEAM MANAGEMENT",          subtitle: "Create, edit, and assign team details" },
-  draft:         { title: "DRAFT PLAYERS LOUNGE",     subtitle: "Search and filter unpicked free agent pool" },
-  free_agents:   { title: "MANAGE FREE AGENTS",       subtitle: "Add, review, and delete free agent entries" },
+  teams:         { title: "TEAM & DRAFT MANAGEMENT",  subtitle: "Create teams, assign leaders, and draft free agents" },
+  "free-agents": { title: "FREE AGENTS",              subtitle: "Browse gamers currently listed as free agents" },
   tournaments:   { title: "TOURNAMENTS",              subtitle: "Create and configure tournament formats" },
   brackets:      { title: "PLAYOFF BRACKETS",         subtitle: "Advance qualified teams to playoff brackets" },
-  results:       { title: "MATCH RESULTS",            subtitle: "Submit completed match scores and advance brackets" },
-  standings:     { title: "LEAGUE STANDINGS",         subtitle: "Monitor current team standings" },
-  stats:         { title: "GAME STATISTICS",          subtitle: "Detailed win-rates, MVPs, and metrics" },
+  schedule:      { title: "MATCH SCHEDULE",            subtitle: "View, schedule, and manage all tournament matches" },
+  stats:         { title: "GAME STATISTICS",           subtitle: "Detailed win-rates, MVPs, and metrics" },
   announcements: { title: "ANNOUNCEMENT MAKER",       subtitle: "Submit announcements for admin moderation" },
   calendar:      { title: "CALENDAR SCHEDULER",       subtitle: "Schedule matches and filter past events" },
 };
@@ -40,19 +36,17 @@ function OrganizerLayout() {
 
   const renderSection = () => {
     switch (section) {
-      case "overview":    return <OverviewManagementModule />;
-      case "chat":        return <ChatManagementModule />;
-      case "teams":       return <TeamManagementModule />;
-      case "draft":       return <DraftManagementModule />;
-      case "free_agents": return <FreeAgentManagementModule />;
-      case "tournaments": return <TournamentManagementModule />;
-      case "brackets":    return <BracketManagementModule showActions />;
-      case "results":     return <ResultsManagementModule />;
-      case "standings":   return <StandingsManagementModule />;
-      case "stats":       return <StatsManagementModule />;
+      case "overview":      return <OverviewManagementModule />;
+      case "chat":          return <ChatManagementModule />;
+      case "teams":         return <TeamDraftManagementModule />;
+      case "free-agents":   return <FreeAgentsDirectoryModule />;
+      case "tournaments":   return <TournamentManagementModule />;
+      case "brackets":      return <BracketManagementModule showActions />;
+      case "schedule":      return <OrganizerScheduleModule />;
+      case "stats":         return <StatsManagementModule />;
       case "announcements": return <AnnouncementManagementModule showSubmitForm />;
-      case "calendar":    return <OrganizerCalendarModule />;
-      default:            return null;
+      case "calendar":      return <OrganizerCalendarModule />;
+      default:              return null;
     }
   };
 

@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth-context";
 import { IconPlay, IconPlus, IconEdit, IconX } from "@/components/shared/icons";
 import AddStreamModal from "@/modules/livestream-management/add-stream-modal";
 import { Livestream } from "@/types/announcement";
+import { getEmbedUrl, detectPlatform } from "@/lib/embed-url";
 
 interface LivestreamDoc extends Livestream {
   createdAt?: unknown;
@@ -23,6 +24,119 @@ interface LivestreamDoc extends Livestream {
 }
 
 interface Props { showManageControls?: boolean; }
+
+/* ─── Platform badge colours ──────────────────────────────────────────────── */
+const platformColors: Record<string, { bg: string; text: string; icon: string }> = {
+  youtube:  { bg: "rgba(255,0,0,0.12)",   text: "#FF4444", icon: "▶" },
+  facebook: { bg: "rgba(24,119,242,0.12)", text: "#1877F2", icon: "f" },
+  twitch:   { bg: "rgba(145,70,255,0.12)", text: "#9146FF", icon: "⬤" },
+  unknown:  { bg: "rgba(255,255,255,0.06)", text: "var(--c-text-muted)", icon: "?" },
+};
+
+/* ─── Stream Embed component ──────────────────────────────────────────────── */
+function StreamEmbed({ stream }: { stream: LivestreamDoc }) {
+  const { embedUrl, platform } = getEmbedUrl(stream.url, stream.platform);
+  const pColors = platformColors[platform] || platformColors.unknown;
+
+  if (!embedUrl) {
+    // Fallback: can't embed — show link to watch externally
+    return (
+      <div
+        className="relative rounded-lg overflow-hidden aspect-video flex items-center justify-center"
+        style={{ backgroundColor: "var(--c-surface2)", border: "1px solid var(--c-border)" }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1A0A0A] to-[#0A0A1A] opacity-60" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span
+            className="font-head text-[5rem] font-bold uppercase tracking-[8px] select-none"
+            style={{ color: "rgba(255,70,85,0.08)" }}
+          >
+            LIVE
+          </span>
+        </div>
+        <div className="relative z-10 flex flex-col items-center gap-3">
+          <div className="w-14 h-14 bg-[#FF4655] rounded-full flex items-center justify-center">
+            <IconPlay size={20} className="ml-1" />
+          </div>
+          <div
+            className="font-head text-sm font-semibold uppercase tracking-[2px] flex items-center gap-2"
+            style={{ color: "var(--c-text)" }}
+          >
+            <span className="w-2 h-2 bg-[#FF4655] rounded-full animate-pulse-dot inline-block" />
+            LIVE NOW
+          </div>
+          <a
+            href={stream.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline transition-opacity hover:opacity-80"
+            style={{ color: pColors.text }}
+          >
+            Watch on {stream.platform || "External Site"} →
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative rounded-xl overflow-hidden" style={{ border: "1px solid var(--c-border)" }}>
+      {/* Live indicator bar */}
+      <div
+        className="flex items-center gap-2 px-4 py-2"
+        style={{ backgroundColor: "var(--c-surface2)", borderBottom: "1px solid var(--c-border)" }}
+      >
+        <span className="w-2 h-2 bg-[#FF4655] rounded-full animate-pulse-dot inline-block" />
+        <span
+          className="font-head text-[10px] font-bold uppercase tracking-[2px]"
+          style={{ color: "#FF4655" }}
+        >
+          LIVE
+        </span>
+        <span
+          className="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full ml-1"
+          style={{ backgroundColor: pColors.bg, color: pColors.text }}
+        >
+          {platform === "unknown" ? (stream.platform || "Stream") : platform}
+        </span>
+        <span className="text-xs ml-auto" style={{ color: "var(--c-text-muted)" }}>
+          {stream.tournamentName}
+        </span>
+      </div>
+      {/* Iframe embed */}
+      <div className="aspect-video w-full bg-black">
+        <iframe
+          src={embedUrl}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          title={stream.label || "Livestream"}
+          style={{ border: "none" }}
+        />
+      </div>
+      {/* Info bar */}
+      <div
+        className="flex items-center gap-3 px-4 py-2"
+        style={{ backgroundColor: "var(--c-surface2)", borderTop: "1px solid var(--c-border)" }}
+      >
+        <span className="text-sm font-medium" style={{ color: "var(--c-text)" }}>
+          {stream.label}
+        </span>
+        <a
+          href={stream.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] ml-auto font-semibold uppercase tracking-widest transition-opacity hover:opacity-80"
+          style={{ color: pColors.text }}
+        >
+          Open in {platform === "unknown" ? (stream.platform || "Browser") : platform} ↗
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main module ─────────────────────────────────────────────────────────── */
 
 export default function LivestreamManagementModule({ showManageControls = false }: Props) {
   const { profile } = useAuth();
@@ -53,8 +167,11 @@ export default function LivestreamManagementModule({ showManageControls = false 
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id: _id, ...rest } = stream;
+      // Auto-detect platform from URL if not set
+      const detectedPlatform = detectPlatform(rest.url);
       await addDoc(collection(db, "livestreams"), {
         ...rest,
+        platform: rest.platform || (detectedPlatform !== "unknown" ? detectedPlatform : "YouTube"),
         createdAt: serverTimestamp(),
       });
       setSuccessMsg(true);
@@ -132,44 +249,34 @@ export default function LivestreamManagementModule({ showManageControls = false 
         </div>
       ) : (
         <>
-          {/* ── Active stream embed ────────────────────────────────────── */}
-          {liveStreams.map((ls) => (
-            <div key={ls.id} className="max-w-2xl">
-              <div
-                className="relative rounded-lg overflow-hidden aspect-video flex items-center justify-center cursor-pointer group transition-colors"
-                style={{ backgroundColor: "var(--c-surface2)", border: "1px solid var(--c-border)" }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-[#1A0A0A] to-[#0A0A1A] opacity-60" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span
-                    className="font-head text-[5rem] font-bold uppercase tracking-[8px] select-none"
-                    style={{ color: "rgba(255,70,85,0.08)" }}
-                  >
-                    LIVE
-                  </span>
+          {/* ── Active stream embeds ───────────────────────────────────── */}
+          {liveStreams.length > 0 && (
+            <div className="space-y-6">
+              {liveStreams.map((ls) => (
+                <div key={ls.id} className="max-w-3xl">
+                  <StreamEmbed stream={ls} />
                 </div>
-                <div className="relative z-10 flex flex-col items-center gap-3">
-                  <div className="w-14 h-14 bg-[#FF4655] rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <IconPlay size={20} className="ml-1" />
-                  </div>
-                  <div
-                    className="font-head text-sm font-semibold uppercase tracking-[2px] flex items-center gap-2"
-                    style={{ color: "var(--c-text)" }}
-                  >
-                    <span className="w-2 h-2 bg-[#FF4655] rounded-full animate-pulse-dot inline-block" />
-                    LIVE NOW
-                  </div>
-                  <div className="text-xs" style={{ color: "var(--c-text-muted)" }}>{ls.tournamentName}</div>
-                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── No live streams message ────────────────────────────────── */}
+          {liveStreams.length === 0 && streams.length > 0 && (
+            <div
+              className="flex flex-col items-center justify-center py-12 rounded-xl"
+              style={{ backgroundColor: "var(--c-surface2)", border: "1px solid var(--c-border)" }}
+            >
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: "var(--c-surface3)" }}>
+                <IconPlay size={18} style={{ color: "var(--c-text-dim)" }} />
               </div>
-              <div className="mt-2 flex items-center gap-2">
-                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${statusStyle(ls.status)}`}>
-                  {ls.status}
-                </span>
-                <span className="text-sm" style={{ color: "var(--c-text-muted)" }}>{ls.label}</span>
+              <div className="font-head text-sm font-semibold uppercase tracking-[2px] mb-1" style={{ color: "var(--c-text-dim)" }}>
+                No Active Streams
+              </div>
+              <div className="text-xs" style={{ color: "var(--c-text-muted)" }}>
+                Streams marked as &quot;Live&quot; will appear here with an embedded player.
               </div>
             </div>
-          ))}
+          )}
 
           {/* ── Stream list ────────────────────────────────────────────── */}
           <div className="dash-table-wrap">
@@ -196,45 +303,66 @@ export default function LivestreamManagementModule({ showManageControls = false 
                     </td>
                   </tr>
                 )}
-                {streams.map((ls) => (
-                  <tr key={ls.id} className="dash-tr">
-                    <td className="dash-td font-medium">{ls.label}</td>
-                    <td className="dash-td-dim max-w-[180px] truncate">{ls.url}</td>
-                    <td className="dash-td-muted">{ls.tournamentName}</td>
-                    <td className="dash-td-muted">{ls.platform || "YouTube"}</td>
-                    <td className="dash-td">
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${statusStyle(ls.status)}`}
-                        style={
-                          !statusStyle(ls.status)
-                            ? { backgroundColor: "var(--c-surface3)", color: "var(--c-text-dim)" }
-                            : {}
-                        }
-                      >
-                        {ls.status}
-                      </span>
-                    </td>
-                    {showManageControls && (
-                      <td className="dash-td">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEdit(ls)}
-                            className="flex items-center gap-1 dash-btn-ghost text-xs px-3 py-1 rounded"
-                            title="Cycle status"
-                          >
-                            <IconEdit size={11} /> Edit
-                          </button>
-                          <button
-                            onClick={() => handleRemove(ls.id)}
-                            className="flex items-center gap-1 dash-btn-ghost text-xs px-3 py-1 rounded"
-                          >
-                            <IconX size={11} /> Remove
-                          </button>
-                        </div>
+                {streams.map((ls) => {
+                  const detected = detectPlatform(ls.url);
+                  const pColors = platformColors[detected] || platformColors.unknown;
+                  return (
+                    <tr key={ls.id} className="dash-tr">
+                      <td className="dash-td font-medium">{ls.label}</td>
+                      <td className="dash-td-dim max-w-[180px] truncate">
+                        <a
+                          href={ls.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline transition-opacity hover:opacity-70"
+                          style={{ color: pColors.text }}
+                        >
+                          {ls.url.length > 45 ? ls.url.substring(0, 45) + "…" : ls.url}
+                        </a>
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      <td className="dash-td-muted">{ls.tournamentName}</td>
+                      <td className="dash-td">
+                        <span
+                          className="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: pColors.bg, color: pColors.text }}
+                        >
+                          {ls.platform || detected}
+                        </span>
+                      </td>
+                      <td className="dash-td">
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${statusStyle(ls.status)}`}
+                          style={
+                            !statusStyle(ls.status)
+                              ? { backgroundColor: "var(--c-surface3)", color: "var(--c-text-dim)" }
+                              : {}
+                          }
+                        >
+                          {ls.status}
+                        </span>
+                      </td>
+                      {showManageControls && (
+                        <td className="dash-td">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEdit(ls)}
+                              className="flex items-center gap-1 dash-btn-ghost text-xs px-3 py-1 rounded"
+                              title="Cycle status"
+                            >
+                              <IconEdit size={11} /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleRemove(ls.id)}
+                              className="flex items-center gap-1 dash-btn-ghost text-xs px-3 py-1 rounded"
+                            >
+                              <IconX size={11} /> Remove
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -254,3 +382,4 @@ export default function LivestreamManagementModule({ showManageControls = false 
     </div>
   );
 }
+

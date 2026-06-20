@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { IconX } from "@/components/shared/icons";
-import { useOrganizerContext, fsUpdatePlayer, fsUpdateTeam, type Player } from "@/lib/organizer-context";
+import { useOrganizerContext, fsUpdatePlayer, fsUpdateTeam, fsUpdateUserTeamId, type Player } from "@/lib/organizer-context";
 
 export default function DraftManagementModule() {
   const { freeAgents, draftedPlayers, teams, playerDocIds, loading } = useOrganizerContext();
@@ -66,6 +66,8 @@ export default function DraftManagementModule() {
         await fsUpdateTeam(targetTeam.id, {
           players: [...targetTeam.players, player.name],
         });
+        // Sync teamId onto the gamer's user account so team-viewer shows their team
+        if (player.email) await fsUpdateUserTeamId(player.email, targetTeam.id);
       }
     } catch (err) {
       console.error("Failed to draft player:", err);
@@ -91,6 +93,9 @@ export default function DraftManagementModule() {
           });
         }
       }
+
+      // Clear teamId on the gamer's user account
+      if (player.email) await fsUpdateUserTeamId(player.email, null);
 
       if (hoveredPlayer?.ign === player.ign) setHoveredPlayer(null);
     } catch (err) {

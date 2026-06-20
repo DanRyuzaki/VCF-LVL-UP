@@ -4,13 +4,18 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { FontSizeProvider } from "@/lib/font-size-context";
 import { AccessibilityProvider } from "@/lib/accessibility-context";
 import { AuthProvider } from "@/lib/auth-context";
+import PageViewLogger from "@/components/PageViewLogger";
 
 export const metadata: Metadata = {
   title: "VCF-LVL-UP — Youth eSports Management",
   description: "Faith-Based Youth eSports Management System — Word Baptist Church, Inc.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" data-theme="dark" data-contrast="normal">
       <head>
@@ -30,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     document.documentElement.setAttribute("data-contrast", "normal");
                   }
                 } catch (e) {}
-              })();
+              })()
             `
           }}
         />
@@ -41,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AccessibilityProvider>
               <FontSizeProvider>
                 {children}
+                <PageViewLogger />
               </FontSizeProvider>
             </AccessibilityProvider>
           </ThemeProvider>

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import StatCard from "@/components/shared/stat-card";
@@ -46,14 +46,45 @@ export default function ProfileManagementModule() {
     setSaving(true);
     setError(null);
     try {
+      const trimmedFirst = firstName.trim();
+      const trimmedLast = lastName.trim();
+      const trimmedIgn = inGameName.trim();
+
       await updateDoc(doc(db, "users", profile.uid), {
-        firstName:     firstName.trim(),
+        firstName:     trimmedFirst,
         middleInitial: middleInitial.trim() || null,
-        lastName:      lastName.trim(),
-        inGameName:    inGameName.trim() || null,
+        lastName:      trimmedLast,
+        inGameName:    trimmedIgn || null,
         phone:         phone.trim() || null,
         updatedAt:     serverTimestamp(),
       });
+
+      // Keep the matching `players` doc's name/ign in sync. `players` has no
+      // `uid` field — email is the only join key shared with `users` (see
+      // fsUpdateUserTeamId for the same pattern on the organizer side).
+      // This is intentionally best-effort: a gamer created before the
+      // user-management fix (or seeded without a players doc) simply has
+      // nothing to sync yet — that's not an error, and must never block the
+      // profile save itself.
+      if (profile.email) {
+        try {
+          const playerSnap = await getDocs(
+            query(collection(db, "players"), where("email", "==", profile.email), limit(1))
+          );
+          if (!playerSnap.empty) {
+            const playerDocId = playerSnap.docs[0].id;
+            await updateDoc(doc(db, "players", playerDocId), {
+              name: `${trimmedFirst} ${trimmedLast}`.trim(),
+              ign: trimmedIgn || `${trimmedFirst} ${trimmedLast}`.trim(),
+              updatedAt: serverTimestamp(),
+            });
+          }
+        } catch (syncErr) {
+          // Non-fatal — log only, never surface to the gamer or block save.
+          console.error("Failed to sync players doc after profile update:", syncErr);
+        }
+      }
+
       setSuccess(true);
       setEditing(false);
       setTimeout(() => setSuccess(false), 3000);

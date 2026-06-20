@@ -33,7 +33,7 @@ export default function DeveloperDashboard() {
       case "roles": return <RoleManagementModule />;
       case "maintenance": return <MaintenanceManagementModule />;
       case "archived": return <ArchivedSectionModule />;
-      case "communication": return <CommunicationModule context="developer" />;
+      case "communication": return <CommunicationModule />;
       default: return null;
     }
   };

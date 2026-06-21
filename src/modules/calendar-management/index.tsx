@@ -101,6 +101,31 @@ export default function CalendarManagementModule({
       return;
     }
     if (!profile) { setSubmitErr("You must be signed in."); return; }
+
+    const now = new Date();
+    const selectedDate = new Date(`${eventDate}T${eventTime || "00:00"}`);
+    if (!eventTime) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        setSubmitErr("Event date cannot be in the past.");
+        return;
+      }
+    } else {
+      if (selectedDate < now) {
+        setSubmitErr("Event date and time cannot be in the past.");
+        return;
+      }
+    }
+
+    const isDoubleBooked = events.some(
+      (e) => e.date === eventDate && e.time === (eventTime || "")
+    );
+    if (isDoubleBooked) {
+      setSubmitErr("An event is already scheduled at this date and time.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       await addDoc(collection(db, "calendar_events"), {

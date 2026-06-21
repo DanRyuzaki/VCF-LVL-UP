@@ -147,13 +147,18 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
   // The gamer's existing password is preserved; they can reset it from the
   // login page if needed.
   // ------------------------------------------------------------------
-  const handleAddUser = async (data: Record<string, string>) => {
+  const handleAddUser = async (data: Record<string, string>): Promise<{ success: boolean; error?: string }> => {
     setSaving(true);
     setSaveError("");
 
     // Shared helper — writes users doc + players doc given a known UID
     const writeFirestoreDocs = async (uid: string, roleKey: string) => {
       const fullName = `${data.firstName}${data.middleInitial ? ` ${data.middleInitial}.` : ""} ${data.lastName}`.trim();
+
+      // Build the admin's display name for the "created by" field
+      const creatorName = currentUserProfile
+        ? `${currentUserProfile.firstName}${currentUserProfile.middleInitial ? ` ${currentUserProfile.middleInitial}.` : ""} ${currentUserProfile.lastName}`.trim()
+        : "Admin";
 
       const userDoc: Record<string, unknown> = {
         uid,
@@ -170,6 +175,7 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
         createdAt: serverTimestamp(),
         lastLogin: null,
         createdBy: currentUserProfile?.uid ?? null,
+        createdByName: creatorName,
       };
       await setDoc(doc(db, "users", uid), userDoc);
 
@@ -218,6 +224,9 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
       );
       await writeFirestoreDocs(credential.user.uid, roleKey);
 
+      setSaving(false);
+      return { success: true };
+
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? "";
 
@@ -229,9 +238,8 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
         );
         if (!existingUserSnap.empty) {
           // A live users doc exists — this is a genuine duplicate, block it
-          setSaveError("That email is already registered to an active account.");
           setSaving(false);
-          return;
+          return { success: false, error: "That email is already registered to an active account." };
         }
 
         // No users doc → orphaned Auth account. Look up the original UID
@@ -254,11 +262,11 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
           // Auth account exists but we have no deletion record for it —
           // this account was created outside the app (e.g. directly in
           // Firebase console). We can't recover the UID client-side.
-          setSaveError(
-            "This email is already registered in the system but has no deletion record. Please contact a developer to recover this account."
-          );
           setSaving(false);
-          return;
+          return {
+            success: false,
+            error: "This email is already registered in the system but has no deletion record. Please contact a developer to recover this account.",
+          };
         }
 
         // We have the UID — recreate the Firestore docs without touching Auth
@@ -268,24 +276,26 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
           setRecoveryNotice(
             `Account recovered. "${data.email}" already existed in Auth — their password was kept as-is. They can reset it from the login page if needed.`
           );
+          setSaving(false);
+          return { success: true };
         } catch (recoveryErr) {
           console.error("Failed to recover orphaned account:", recoveryErr);
-          setSaveError("Found the orphaned account but failed to recreate the profile. Please try again.");
+          setSaving(false);
+          return { success: false, error: "Found the orphaned account but failed to recreate the profile. Please try again." };
         }
-        setSaving(false);
-        return;
 
       } else if (code === "auth/weak-password") {
-        setSaveError("Password must be at least 6 characters.");
+        setSaving(false);
+        return { success: false, error: "Password must be at least 6 characters." };
       } else {
-        setSaveError("Failed to create user. Please try again.");
         console.error(err);
+        setSaving(false);
+        return { success: false, error: "Failed to create user. Please try again." };
       }
-      setSaving(false);
-      return;
     }
 
     setSaving(false);
+    return { success: true };
   };
 
   // ------------------------------------------------------------------
@@ -690,7 +700,7 @@ export default function UserManagementModule({ context = "admin", onNavigate }: 
       {showAddModal && (
         isDev
           ? <AddAdminModal onClose={() => setShowAddModal(false)} onSave={handleAddUser} />
-          : <AddUserModal onClose={() => setShowAddModal(false)} onSave={handleAddUser} saving={saving} />
+          : <AddUserModal onClose={() => setShowAddModal(false)} onSave={handleAddUser} />
       )}
 
       {viewUser && !usersToDelete && (

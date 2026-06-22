@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 
 interface CalendarEvent {
   id: string;
@@ -50,6 +51,7 @@ function DayModal({
   events: CalendarEvent[];
   onClose: () => void;
 }) {
+  const { theme } = useTheme();
   const dateObj  = new Date(year, month, day);
   const dayName  = DAY_NAMES[dateObj.getDay()];
   const monthName = MONTH_NAMES[month];
@@ -150,7 +152,7 @@ function DayModal({
             className="w-full text-xs font-semibold uppercase tracking-widest py-2 rounded-lg transition-colors"
             style={{
               backgroundColor: "var(--c-border, rgba(255,255,255,0.08))",
-              color: "var(--c-text, #e2e8f0)",
+              color: theme === "light" ? "#ffffff" : "#000000",
             }}
           >
             Close
@@ -231,6 +233,31 @@ export default function CalendarManagementModule({
     setSubmitErr(null);
     if (!eventTitle.trim() || !eventDate) { setSubmitErr("Title and date are required."); return; }
     if (!profile) { setSubmitErr("You must be signed in."); return; }
+
+    const now = new Date();
+    const selectedDate = new Date(`${eventDate}T${eventTime || "00:00"}`);
+    if (!eventTime) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        setSubmitErr("Event date cannot be in the past.");
+        return;
+      }
+    } else {
+      if (selectedDate < now) {
+        setSubmitErr("Event date and time cannot be in the past.");
+        return;
+      }
+    }
+
+    const isDoubleBooked = events.some(
+      (e) => e.date === eventDate && e.time === (eventTime || "")
+    );
+    if (isDoubleBooked) {
+      setSubmitErr("An event is already scheduled at this date and time.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       await addDoc(collection(db, "calendar_events"), {

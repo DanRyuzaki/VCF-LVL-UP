@@ -114,8 +114,8 @@ export default function StatsManagementModule() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-white text-xl font-bold">Player Statistics</h2>
-        <p className="text-white/40 text-sm mt-0.5">
+        <h2 className="text-theme text-xl font-bold">Player Statistics</h2>
+        <p className="text-muted text-sm mt-0.5">
           Live from Firestore — {totalPlayers} player{totalPlayers !== 1 ? "s" : ""} tracked
         </p>
       </div>
@@ -123,13 +123,13 @@ export default function StatsManagementModule() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Total Players", value: totalPlayers, color: "text-white" },
+          { label: "Total Players", value: totalPlayers, color: "text-theme" },
           { label: "Drafted",       value: drafted,      color: "text-indigo-400" },
           { label: "Free Agents",   value: freeAgents,   color: "text-amber-400" },
           { label: "Avg KDA",       value: avgKda,       color: "text-emerald-400" },
         ].map((c) => (
-          <div key={c.label} className="bg-white/5 border border-white/10 rounded-xl p-4">
-            <p className="text-white/40 text-xs mb-1">{c.label}</p>
+          <div key={c.label} className="dash-card p-4">
+            <p className="text-muted text-xs mb-1">{c.label}</p>
             <p className={`text-2xl font-bold ${c.color}`}>{c.value}</p>
           </div>
         ))}
@@ -142,12 +142,12 @@ export default function StatsManagementModule() {
           placeholder="Search by name, IGN, role, team…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="dash-input flex-1 min-w-48"
         />
         <select
           value={gameFilter}
           onChange={(e) => setGameFilter(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="dash-select md:w-48"
         >
           <option value="all">All Games</option>
           {games.map((g) => (
@@ -158,55 +158,55 @@ export default function StatsManagementModule() {
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-16 text-white/40 text-sm">Loading…</div>
+        <div className="text-center py-16 text-muted text-sm">Loading…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-white/30 text-sm">
+        <div className="text-center py-16 text-dim text-sm">
           No players match your search.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/10">
+        <div className="dash-table-wrap">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-white/5 text-white/50 uppercase text-[11px] tracking-wider">
+            <thead className="dash-thead">
+              <tr>
                 <th
-                  className="px-4 py-3 text-left cursor-pointer hover:text-white/80 transition"
+                  className="dash-th cursor-pointer hover:text-theme/80 transition"
                   onClick={() => toggleSort("name")}
                 >
                   Player <SortIcon k="name" />
                 </th>
                 <th
-                  className="px-4 py-3 text-left cursor-pointer hover:text-white/80 transition"
+                  className="dash-th cursor-pointer hover:text-theme/80 transition"
                   onClick={() => toggleSort("game")}
                 >
                   Game <SortIcon k="game" />
                 </th>
-                <th className="px-4 py-3 text-left">Role</th>
-                <th className="px-4 py-3 text-left">Rank</th>
+                <th className="dash-th">Role</th>
+                <th className="dash-th">Rank</th>
                 <th
-                  className="px-4 py-3 text-center cursor-pointer hover:text-white/80 transition"
+                  className="dash-th text-center cursor-pointer hover:text-theme/80 transition"
                   onClick={() => toggleSort("winRate")}
                 >
                   Win Rate <SortIcon k="winRate" />
                 </th>
                 <th
-                  className="px-4 py-3 text-center cursor-pointer hover:text-white/80 transition"
+                  className="dash-th text-center cursor-pointer hover:text-theme/80 transition"
                   onClick={() => toggleSort("kda")}
                 >
                   KDA <SortIcon k="kda" />
                 </th>
-                <th className="px-4 py-3 text-left">Team</th>
-                <th className="px-4 py-3 text-center">Recent</th>
+                <th className="dash-th">Team</th>
+                <th className="dash-th text-center">Recent</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {filtered.map((p) => (
-                <tr key={p.id} className="hover:bg-white/5 transition text-white">
+                <tr key={p.id} className="dash-tr text-theme">
                   <td className="px-4 py-3">
                     <p className="font-medium">{p.name}</p>
-                    <p className="text-white/40 text-xs">{p.ign}</p>
+                    <p className="text-muted text-xs">{p.ign}</p>
                   </td>
-                  <td className="px-4 py-3 text-white/70">{p.game}</td>
-                  <td className="px-4 py-3 text-white/70">{p.role}</td>
+                  <td className="px-4 py-3 text-muted">{p.game}</td>
+                  <td className="px-4 py-3 text-muted">{p.role}</td>
                   <td className="px-4 py-3">
                     <span className="bg-amber-500/15 text-amber-400 text-xs px-2 py-0.5 rounded-full">
                       {p.rank}
@@ -218,7 +218,7 @@ export default function StatsManagementModule() {
                   <td className="px-4 py-3 text-center text-indigo-400 font-bold">
                     {p.kda}
                   </td>
-                  <td className="px-4 py-3 text-white/60 text-xs">
+                  <td className="px-4 py-3 text-muted text-xs">
                     {p.team ?? (
                       <span className="text-amber-400">Free Agent</span>
                     )}

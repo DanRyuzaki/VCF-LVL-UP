@@ -1,0 +1,50 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files — never commit secrets
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript — auto-generated
+*.tsbuildinfo
+next-env.d.ts
+
+# firebase — secrets and CLI-only files
+serviceAccountKey.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# firebase hosting boilerplate — not used on Vercel
+public/index.html
+public/404.html
+
+# dev-only artifacts
+.fcc/
+session.md
+backfill-players.mjs

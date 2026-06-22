@@ -43,29 +43,30 @@ export default function ProfileManagementModule() {
 
   const handleSave = async () => {
     if (!profile) return;
+    const trimmedFirst = firstName.trim();
+    const trimmedMiddle = middleInitial.trim();
+    const trimmedLast = lastName.trim();
+    const trimmedIgn = inGameName.trim();
+    const trimmedPhone = phone.trim();
+
+    if (!trimmedFirst || !trimmedLast || !trimmedIgn || !trimmedPhone) {
+      setError("First name, last name, in-game name, and phone number are required.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
-      const trimmedFirst = firstName.trim();
-      const trimmedLast = lastName.trim();
-      const trimmedIgn = inGameName.trim();
-
       await updateDoc(doc(db, "users", profile.uid), {
         firstName:     trimmedFirst,
-        middleInitial: middleInitial.trim() || null,
+        middleInitial: trimmedMiddle || null,
         lastName:      trimmedLast,
-        inGameName:    trimmedIgn || null,
-        phone:         phone.trim() || null,
+        inGameName:    trimmedIgn,
+        phone:         trimmedPhone,
         updatedAt:     serverTimestamp(),
       });
 
-      // Keep the matching `players` doc's name/ign in sync. `players` has no
-      // `uid` field — email is the only join key shared with `users` (see
-      // fsUpdateUserTeamId for the same pattern on the organizer side).
-      // This is intentionally best-effort: a gamer created before the
-      // user-management fix (or seeded without a players doc) simply has
-      // nothing to sync yet — that's not an error, and must never block the
-      // profile save itself.
+      // Keep the matching `players` doc's name/ign in sync.
       if (profile.email) {
         try {
           const playerSnap = await getDocs(
@@ -75,12 +76,11 @@ export default function ProfileManagementModule() {
             const playerDocId = playerSnap.docs[0].id;
             await updateDoc(doc(db, "players", playerDocId), {
               name: `${trimmedFirst} ${trimmedLast}`.trim(),
-              ign: trimmedIgn || `${trimmedFirst} ${trimmedLast}`.trim(),
+              ign: trimmedIgn,
               updatedAt: serverTimestamp(),
             });
           }
         } catch (syncErr) {
-          // Non-fatal — log only, never surface to the gamer or block save.
           console.error("Failed to sync players doc after profile update:", syncErr);
         }
       }
@@ -125,7 +125,7 @@ export default function ProfileManagementModule() {
     { label: "Middle Initial",  value: middleInitial, setter: setMiddleInitial, placeholder: "e.g. D" },
     { label: "Last Name",       value: lastName,      setter: setLastName,      placeholder: "e.g. Dela Cruz" },
     { label: "In-Game Name",    value: inGameName,    setter: setInGameName,    placeholder: "e.g. JohnDC_MLBB" },
-    { label: "Phone Number",    value: phone,         setter: setPhone,         placeholder: "+63 912 345 6789" },
+    { label: "Phone Number",    value: phone,         setter: (v) => setPhone(v.replace(/\D/g, "")),         placeholder: "e.g. 09123456789" },
   ];
 
   return (
@@ -204,25 +204,33 @@ export default function ProfileManagementModule() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {fields.map(({ label, value, setter, placeholder }) => (
-            <div key={label}>
-              <label className="dash-label">{label}</label>
-              <input
-                value={value}
-                onChange={(e) => setter(e.target.value)}
-                disabled={!editing}
-                placeholder={placeholder}
-                className="dash-input"
-                style={{ opacity: editing ? 1 : 0.5 }}
-              />
-            </div>
-          ))}
+          {fields.map(({ label, value, setter, placeholder }) => {
+            const isEmpty = !value.trim();
+            const showErrorBorder = editing && isEmpty && label !== "Middle Initial";
+            return (
+              <div key={label}>
+                <label className="dash-label">{label}</label>
+                <input
+                  value={value}
+                  onChange={(e) => setter(e.target.value)}
+                  disabled={!editing}
+                  placeholder={placeholder}
+                  className="dash-input"
+                  style={{
+                    opacity: editing ? 1 : 0.5,
+                    borderColor: showErrorBorder ? "var(--brand-red)" : undefined,
+                    borderWidth: showErrorBorder ? "1.5px" : undefined,
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {editing && (
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !firstName.trim() || !lastName.trim() || !inGameName.trim() || !phone.trim()}
             className="mt-4 bg-[#FF4655] hover:bg-[#E53E4D] text-white text-xs font-semibold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save Changes"}

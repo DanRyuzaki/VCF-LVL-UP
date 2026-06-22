@@ -128,8 +128,13 @@ export default function StatsManagementModule() {
           { label: "Free Agents",   value: freeAgents,   color: "text-amber-400" },
           { label: "Avg KDA",       value: avgKda,       color: "text-emerald-400" },
         ].map((c) => (
+<<<<<<< HEAD
           <div key={c.label} className="rounded-xl p-4" style={{ backgroundColor: "var(--c-surface)", border: "1px solid var(--c-border)" }}>
             <p className="text-dim text-xs mb-1">{c.label}</p>
+=======
+          <div key={c.label} className="dash-card p-4">
+            <p className="text-muted text-xs mb-1">{c.label}</p>
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
             <p className={`text-2xl font-bold ${c.color}`}>{c.value}</p>
           </div>
         ))}
@@ -147,7 +152,11 @@ export default function StatsManagementModule() {
         <select
           value={gameFilter}
           onChange={(e) => setGameFilter(e.target.value)}
+<<<<<<< HEAD
           className="dash-select"
+=======
+          className="dash-select md:w-48"
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
         >
           <option value="all">All Games</option>
           {games.map((g) => (
@@ -158,6 +167,7 @@ export default function StatsManagementModule() {
 
       {/* Table */}
       {loading ? (
+<<<<<<< HEAD
         <div className="text-center py-16 text-dim text-sm">Loading…</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted text-sm">
@@ -173,45 +183,72 @@ export default function StatsManagementModule() {
                   style={{ color: "var(--c-text-dim)" }}
                   onMouseEnter={(e) => e.currentTarget.style.color = "var(--c-text)"}
                   onMouseLeave={(e) => e.currentTarget.style.color = "var(--c-text-dim)"}
+=======
+        <div className="text-center py-16 text-muted text-sm">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-dim text-sm">
+          No players match your search.
+        </div>
+      ) : (
+        <div className="dash-table-wrap">
+          <table className="w-full text-sm">
+            <thead className="dash-thead">
+              <tr>
+                <th
+                  className="dash-th cursor-pointer hover:text-theme/80 transition"
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                   onClick={() => toggleSort("name")}
                 >
                   Player <SortIcon k="name" />
                 </th>
                 <th
+<<<<<<< HEAD
                   className="px-4 py-3 text-left cursor-pointer transition"
                   style={{ color: "var(--c-text-dim)" }}
                   onMouseEnter={(e) => e.currentTarget.style.color = "var(--c-text)"}
                   onMouseLeave={(e) => e.currentTarget.style.color = "var(--c-text-dim)"}
+=======
+                  className="dash-th cursor-pointer hover:text-theme/80 transition"
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                   onClick={() => toggleSort("game")}
                 >
                   Game <SortIcon k="game" />
                 </th>
-                <th className="px-4 py-3 text-left">Role</th>
-                <th className="px-4 py-3 text-left">Rank</th>
+                <th className="dash-th">Role</th>
+                <th className="dash-th">Rank</th>
                 <th
+<<<<<<< HEAD
                   className="px-4 py-3 text-center cursor-pointer transition"
                   style={{ color: "var(--c-text-dim)" }}
                   onMouseEnter={(e) => e.currentTarget.style.color = "var(--c-text)"}
                   onMouseLeave={(e) => e.currentTarget.style.color = "var(--c-text-dim)"}
+=======
+                  className="dash-th text-center cursor-pointer hover:text-theme/80 transition"
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                   onClick={() => toggleSort("winRate")}
                 >
                   Win Rate <SortIcon k="winRate" />
                 </th>
                 <th
+<<<<<<< HEAD
                   className="px-4 py-3 text-center cursor-pointer transition"
                   style={{ color: "var(--c-text-dim)" }}
                   onMouseEnter={(e) => e.currentTarget.style.color = "var(--c-text)"}
                   onMouseLeave={(e) => e.currentTarget.style.color = "var(--c-text-dim)"}
+=======
+                  className="dash-th text-center cursor-pointer hover:text-theme/80 transition"
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                   onClick={() => toggleSort("kda")}
                 >
                   KDA <SortIcon k="kda" />
                 </th>
-                <th className="px-4 py-3 text-left">Team</th>
-                <th className="px-4 py-3 text-center">Recent</th>
+                <th className="dash-th">Team</th>
+                <th className="dash-th text-center">Recent</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: "var(--c-border)" }}>
               {filtered.map((p) => (
+<<<<<<< HEAD
                 <tr key={p.id} className="transition" style={{ color: "var(--c-text)" }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--c-surface2)"} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
                   <td className="px-4 py-3">
                     <p className="font-medium" style={{ color: "var(--c-text)" }}>{p.name}</p>
@@ -219,6 +256,15 @@ export default function StatsManagementModule() {
                   </td>
                   <td className="px-4 py-3" style={{ color: "var(--c-text-muted)" }}>{p.game}</td>
                   <td className="px-4 py-3" style={{ color: "var(--c-text-muted)" }}>{p.role}</td>
+=======
+                <tr key={p.id} className="dash-tr text-theme">
+                  <td className="px-4 py-3">
+                    <p className="font-medium">{p.name}</p>
+                    <p className="text-muted text-xs">{p.ign}</p>
+                  </td>
+                  <td className="px-4 py-3 text-muted">{p.game}</td>
+                  <td className="px-4 py-3 text-muted">{p.role}</td>
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                   <td className="px-4 py-3">
                     <span className="bg-amber-500/15 text-amber-400 text-xs px-2 py-0.5 rounded-full">
                       {p.rank}
@@ -230,7 +276,11 @@ export default function StatsManagementModule() {
                   <td className="px-4 py-3 text-center text-indigo-400 font-bold">
                     {p.kda}
                   </td>
+<<<<<<< HEAD
                   <td className="px-4 py-3 text-xs" style={{ color: "var(--c-text-muted)" }}>
+=======
+                  <td className="px-4 py-3 text-muted text-xs">
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                     {p.team ?? (
                       <span className="text-amber-400">Free Agent</span>
                     )}

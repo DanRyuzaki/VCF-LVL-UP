@@ -197,11 +197,16 @@ export default function OrganizerScheduleModule() {
       </div>
 
       {/* Tabs */}
+<<<<<<< HEAD
       <div style={{ display: "flex", gap: 4, backgroundColor: "var(--c-surface3)", borderRadius: 8, padding: 4, width: "fit-content" }}>
+=======
+      <div className="flex gap-1 bg-surface3 border border-theme rounded-lg p-1 w-fit">
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
         {TABS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
+<<<<<<< HEAD
             style={{
               padding: "6px 16px", fontSize: 13, borderRadius: 6, border: "none", cursor: "pointer",
               fontWeight: tab === key ? 700 : 400,
@@ -209,6 +214,14 @@ export default function OrganizerScheduleModule() {
               color: tab === key ? "var(--c-accent-text)" : "var(--c-text-muted)",
               transition: "all 0.15s",
             }}
+=======
+            className={`px-4 py-1.5 text-sm rounded-md transition font-medium ${
+              tab === key
+                ? "bg-indigo-600 text-white"
+                : "text-muted hover:text-theme"
+            }`}
+            style={{ border: "none", cursor: "pointer" }}
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
           >
             {label}
           </button>
@@ -217,9 +230,15 @@ export default function OrganizerScheduleModule() {
 
       {/* Content */}
       {loading ? (
+<<<<<<< HEAD
         <div style={{ textAlign: "center", padding: "64px 0", color: "var(--c-text-dim)", fontSize: 13 }}>Loading schedule…</div>
       ) : sorted.length === 0 ? (
         <div style={{ textAlign: "center", padding: "64px 0", color: "var(--c-text-muted)", fontSize: 13 }}>
+=======
+        <div className="text-center py-16 text-muted text-sm">Loading schedule…</div>
+      ) : sorted.length === 0 ? (
+        <div className="text-center py-16 text-dim text-sm">
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
           No {tab === "all" ? "" : tab + " "}matches
           {filterTournamentId !== "all" ? ` for ${tourneyMap[filterTournamentId]?.name ?? "this tournament"}` : ""}.
         </div>
@@ -238,12 +257,21 @@ export default function OrganizerScheduleModule() {
               <div
                 key={m.id}
                 style={{
+<<<<<<< HEAD
                   backgroundColor: "var(--c-surface)",
                   border: "1px solid var(--c-border)",
                   borderRadius: 12,
                   padding: "14px 16px",
                   transition: "border-color 0.15s",
                   ...(isEditing ? { borderColor: "var(--c-accent)" } : {}),
+=======
+                  backgroundColor: "var(--c-surface2)",
+                  border: "1px solid var(--c-border)",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                  transition: "border-color 0.15s, background-color 0.25s",
+                  ...(isEditing ? { borderColor: "rgba(139,92,246,0.5)" } : {}),
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
@@ -269,11 +297,19 @@ export default function OrganizerScheduleModule() {
                       {m.teamA || "TBD"}
                     </span>
                     {isCompleted ? (
+<<<<<<< HEAD
                       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--c-text-muted)", backgroundColor: "var(--c-surface2)", padding: "4px 12px", borderRadius: 8, fontFamily: "monospace" }}>
                         {m.scoreA ?? 0} — {m.scoreB ?? 0}
                       </span>
                     ) : (
                       <span style={{ fontSize: 11, color: "var(--c-text-dim)", backgroundColor: "var(--c-surface2)", padding: "3px 10px", borderRadius: 6 }}>
+=======
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--c-text-muted)", backgroundColor: "var(--c-surface3)", padding: "4px 12px", borderRadius: 8, fontFamily: "monospace" }}>
+                        {m.scoreA ?? 0} — {m.scoreB ?? 0}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: "var(--c-text-dim)", backgroundColor: "var(--c-surface)", padding: "3px 10px", borderRadius: 6 }}>
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                         VS
                       </span>
                     )}
@@ -292,9 +328,15 @@ export default function OrganizerScheduleModule() {
                         onClick={() => setEditingMatchId(isEditing ? null : m.id)}
                         style={{
                           fontSize: 10, padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontWeight: 600,
+<<<<<<< HEAD
                           border: isEditing ? "1px solid var(--c-accent)" : "1px solid var(--c-border)",
                           backgroundColor: isEditing ? "rgba(255,70,85,0.1)" : "transparent",
                           color: isEditing ? "var(--c-accent)" : "var(--c-text-muted)",
+=======
+                          border: isEditing ? "1px solid #8B5CF6" : "1px solid var(--c-border)",
+                          backgroundColor: isEditing ? "rgba(139,92,246,0.2)" : "transparent",
+                          color: isEditing ? "#8B5CF6" : "var(--c-text-muted)",
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                           transition: "all 0.15s",
                         }}
                       >

@@ -105,12 +105,17 @@ export default function ScheduleManagementModule() {
       {/* Header */}
       <div>
         <h2 className="text-theme text-xl font-bold">Match Schedule</h2>
+<<<<<<< HEAD
         <p className="text-theme text-sm mt-0.5">
+=======
+        <p className="text-muted text-sm mt-0.5">
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
           Live from Firestore — {matches.length} match{matches.length !== 1 ? "es" : ""} total
         </p>
       </div>
 
       {/* Tabs */}
+<<<<<<< HEAD
       <div className="flex gap-1 rounded-lg p-1 w-fit" style={{ backgroundColor: "var(--c-surface3)" }}>
         {TABS.map(({ key, label }) => (
           <button
@@ -124,14 +129,35 @@ export default function ScheduleManagementModule() {
             >
               {label}
             </button>
+=======
+      <div className="flex gap-1 bg-surface3 border border-theme rounded-lg p-1 w-fit">
+        {TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`px-4 py-1.5 text-sm rounded-md transition font-medium ${
+              tab === key
+                ? "bg-indigo-600 text-white"
+                : "text-muted hover:text-theme"
+            }`}
+          >
+            {label}
+          </button>
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
         ))}
       </div>
 
       {/* Content */}
       {loading ? (
+<<<<<<< HEAD
         <div className="text-center py-16 text-dim text-sm">Loading schedule…</div>
       ) : displayed.length === 0 ? (
         <div className="text-center py-16 text-muted text-sm">
+=======
+        <div className="text-center py-16 text-muted text-sm">Loading schedule…</div>
+      ) : displayed.length === 0 ? (
+        <div className="text-center py-16 text-dim text-sm">
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
           No {tab === "all" ? "" : tab + " "}matches found.
         </div>
       ) : (
@@ -144,8 +170,12 @@ export default function ScheduleManagementModule() {
             return (
               <div
                 key={m.id}
+<<<<<<< HEAD
                 className="rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
                 style={{ backgroundColor: "var(--c-surface)", border: "1px solid var(--c-border)" }}
+=======
+                className="bg-surface2 border border-theme rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
               >
                 {/* Round + date */}
                 <div className="min-w-[130px]">
@@ -153,26 +183,46 @@ export default function ScheduleManagementModule() {
                     {m.round || "Match"}
                   </p>
                   <p className="text-theme text-sm font-medium mt-0.5">{fmtDate(m.date)}</p>
+<<<<<<< HEAD
                   <p className="text-dim text-xs">{fmt12(m.time)}</p>
+=======
+                  <p className="text-muted text-xs">{fmt12(m.time)}</p>
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                 </div>
 
                 {/* Teams */}
                 <div className="flex-1 flex items-center gap-3">
+<<<<<<< HEAD
                   <span className={`font-semibold text-sm ${winnerA ? "text-emerald-700" : "text-theme"}`}>
+=======
+                  <span className={`font-semibold text-sm ${winnerA ? "text-emerald-400" : "text-theme"}`}>
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                     {m.teamA || "TBD"}
                   </span>
 
                   {isCompleted ? (
+<<<<<<< HEAD
                     <span className="text-theme text-sm font-mono px-3 py-1 rounded-lg" style={{ backgroundColor: "var(--c-surface2)" }}>
                       {m.scoreA ?? 0} — {m.scoreB ?? 0}
                     </span>
                   ) : (
                     <span className="text-dim text-xs px-3 py-1 rounded-lg" style={{ backgroundColor: "var(--c-surface2)" }}>
+=======
+                    <span className="text-muted text-sm font-mono bg-surface3 px-3 py-1 rounded-lg">
+                      {m.scoreA ?? 0} — {m.scoreB ?? 0}
+                    </span>
+                  ) : (
+                    <span className="text-dim text-xs bg-surface2 px-3 py-1 rounded-lg">
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                       VS
                     </span>
                   )}
 
+<<<<<<< HEAD
                   <span className={`font-semibold text-sm ${winnerB ? "text-emerald-700" : "text-theme"}`}>
+=======
+                  <span className={`font-semibold text-sm ${winnerB ? "text-emerald-400" : "text-theme"}`}>
+>>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
                     {m.teamB || "TBD"}
                   </span>
                 </div>

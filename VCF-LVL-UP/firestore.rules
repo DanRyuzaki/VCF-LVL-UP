@@ -1,0 +1,141 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function getProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function hasRole(role) {
+      return isSignedIn() && getProfile().role == role;
+    }
+    function hasAnyRole(roles) {
+      return isSignedIn() && getProfile().role in roles;
+    }
+
+    // ─── users ─────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      // Any signed-in user can read their own doc; admin/developer can read all
+      allow read: if isSignedIn() && (
+        request.auth.uid == uid ||
+        hasAnyRole(["admin", "developer"])
+      );
+
+      // Developer creates admin docs only
+      allow create: if hasRole("developer") && request.resource.data.role == "admin";
+
+      // Admin creates organizer/gamer docs only
+      allow create: if hasRole("admin") && request.resource.data.role in ["organizer", "gamer"];
+
+      // Owner can update own non-sensitive fields
+      allow update: if request.auth.uid == uid
+        && !("role" in request.resource.data.diff(resource.data).affectedKeys())
+        && !("gamerType" in request.resource.data.diff(resource.data).affectedKeys())
+        && !("createdBy" in request.resource.data.diff(resource.data).affectedKeys())
+        && !("createdAt" in request.resource.data.diff(resource.data).affectedKeys());
+
+      // Developer can suspend/restore (update status, suspendedAt, etc.)
+      allow update: if hasRole("developer");
+
+      // Admin can delete user docs
+      allow delete: if hasRole("admin");
+    }
+
+    // ─── deleted_user_reports ─────────────────────────────────────────────
+    match /deleted_user_reports/{reportId} {
+      allow read:   if hasAnyRole(["admin", "developer"]);
+      allow create: if hasRole("admin");
+      allow update, delete: if false;
+    }
+
+    // ─── audit_logs ───────────────────────────────────────────────────────
+    match /audit_logs/{logId} {
+      allow read:   if hasRole("developer");
+      // DEV-ONLY: allow developers to write logs directly from client
+      allow write:  if hasRole("developer");
+    }
+
+    // ─── announcements ─────────────────────────────────────────────────────
+    match /announcements/{announcementId} {
+      // Gamers can read approved; organizers & admins read all
+      allow read: if hasRole("gamer") && resource.data.status == "approved";
+      allow read: if hasAnyRole(["organizer", "admin"]);
+
+      // Organizers create (pending)
+      allow create: if hasRole("organizer")
+        && request.resource.data.status == "pending";
+
+      // Admin can approve/reject (update status, reviewedBy, reviewedAt)
+      allow update: if hasRole("admin");
+
+      allow delete: if false;
+    }
+
+    // ─── calendar_events ────────────────────────────────────────────────
+    match /calendar_events/{eventId} {
+      // Organizers can read approved events and their own pending events
+      allow read: if isSignedIn() && (
+        resource.data.status == "approved" ||
+        (resource.data.status == "pending" && request.auth.uid == resource.data.submittedBy) ||
+        hasAnyRole(["admin", "developer"])
+      );
+
+      // Organizers can create events (pending)
+      allow create: if isSignedIn() && hasRole("organizer")
+        && request.resource.data.status == "pending"
+        && request.resource.data.submittedBy == request.auth.uid;
+
+      // Admins and developers can update events (approve/reject, etc.)
+      allow update: if hasAnyRole(["admin", "developer"]);
+
+      // Delete not allowed (soft delete via status instead)
+      allow delete: if false;
+    }
+
+    // ─── teams ─────────────────────────────────────────────────────────────
+    match /teams/{teamId} {
+      allow read:   if hasAnyRole(["organizer", "admin", "developer", "gamer"]);
+      allow create: if hasRole("organizer");
+      allow update: if hasAnyRole(["organizer"]);
+      allow delete: if hasRole("organizer");
+    }
+
+    // ─── tournaments ─────────────────────────────────────────────────────
+    match /tournaments/{tournamentId} {
+      allow read:   if isSignedIn();
+      allow create: if hasRole("organizer");
+      allow update: if hasAnyRole(["organizer"]);
+      allow delete: if hasRole("organizer");
+    }
+
+    // ─── matches ─────────────────────────────────────────────────────────
+    match /matches/{matchId} {
+      allow read:   if isSignedIn();
+      allow create: if hasRole("organizer");
+      allow update: if hasRole("organizer");
+      allow delete: if hasRole("organizer");
+    }
+
+    // ─── players (free agents + drafted) ─────────────────────────────────
+    match /players/{playerId} {
+      allow read:   if hasAnyRole(["organizer", "admin", "developer", "gamer"]);
+      allow create: if hasRole("organizer");
+      allow update: if hasRole("organizer");
+      allow delete: if hasRole("organizer");
+    }
+
+    // ─── role_permissions (seeded via console) ─────────────────────────────
+    match /role_permissions/{doc} {
+      allow read:  if isSignedIn();
+      allow write: if false;
+    }
+
+    // ─── Default deny ─────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

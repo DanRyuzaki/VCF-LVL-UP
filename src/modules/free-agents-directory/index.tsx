@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { IconSearch } from "@/components/shared/icons";
 import { useOrganizerContext } from "@/lib/organizer-context";
 import StatCard from "@/components/shared/stat-card";
 
@@ -61,14 +60,11 @@ export default function FreeAgentsDirectoryModule() {
       <div className="dash-card p-4">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-text-dim)]">
-              <IconSearch size={14} />
-            </span>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, IGN, or role..."
-              className="dash-input pl-9"
+              className="dash-input"
             />
           </div>
           <select

@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "group-2-50c28"
-  }
+    "default": "group-2-50c28",
+    "cp": "group-2-50c28"
+  },
+  "targets": {},
+  "etags": {}
 }

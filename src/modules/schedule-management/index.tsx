@@ -104,34 +104,34 @@ export default function ScheduleManagementModule() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-white text-xl font-bold">Match Schedule</h2>
-        <p className="text-white/40 text-sm mt-0.5">
+        <h2 className="text-theme text-xl font-bold">Match Schedule</h2>
+        <p className="text-theme text-sm mt-0.5">
           Live from Firestore — {matches.length} match{matches.length !== 1 ? "es" : ""} total
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-white/5 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 rounded-lg p-1 w-fit" style={{ backgroundColor: "var(--c-surface3)" }}>
         {TABS.map(({ key, label }) => (
           <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`px-4 py-1.5 text-sm rounded-md transition font-medium ${
-              tab === key
-                ? "bg-indigo-600 text-white"
-                : "text-white/50 hover:text-white"
-            }`}
-          >
-            {label}
-          </button>
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-4 py-1.5 text-sm rounded-md transition font-medium ${
+                tab === key
+                  ? "bg-accent text-on-accent"
+                  : "text-muted hover:text-theme"
+              }`}
+            >
+              {label}
+            </button>
         ))}
       </div>
 
       {/* Content */}
       {loading ? (
-        <div className="text-center py-16 text-white/40 text-sm">Loading schedule…</div>
+        <div className="text-center py-16 text-dim text-sm">Loading schedule…</div>
       ) : displayed.length === 0 ? (
-        <div className="text-center py-16 text-white/30 text-sm">
+        <div className="text-center py-16 text-muted text-sm">
           No {tab === "all" ? "" : tab + " "}matches found.
         </div>
       ) : (
@@ -144,34 +144,35 @@ export default function ScheduleManagementModule() {
             return (
               <div
                 key={m.id}
-                className="bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+                className="rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+                style={{ backgroundColor: "var(--c-surface)", border: "1px solid var(--c-border)" }}
               >
                 {/* Round + date */}
                 <div className="min-w-[130px]">
-                  <p className="text-indigo-400 text-xs font-medium uppercase tracking-wider">
+                  <p className="text-indigo-700 text-xs font-medium uppercase tracking-wider">
                     {m.round || "Match"}
                   </p>
-                  <p className="text-white text-sm font-medium mt-0.5">{fmtDate(m.date)}</p>
-                  <p className="text-white/40 text-xs">{fmt12(m.time)}</p>
+                  <p className="text-theme text-sm font-medium mt-0.5">{fmtDate(m.date)}</p>
+                  <p className="text-dim text-xs">{fmt12(m.time)}</p>
                 </div>
 
                 {/* Teams */}
                 <div className="flex-1 flex items-center gap-3">
-                  <span className={`font-semibold text-sm ${winnerA ? "text-emerald-400" : "text-white"}`}>
+                  <span className={`font-semibold text-sm ${winnerA ? "text-emerald-700" : "text-theme"}`}>
                     {m.teamA || "TBD"}
                   </span>
 
                   {isCompleted ? (
-                    <span className="text-white/60 text-sm font-mono bg-white/10 px-3 py-1 rounded-lg">
+                    <span className="text-theme text-sm font-mono px-3 py-1 rounded-lg" style={{ backgroundColor: "var(--c-surface2)" }}>
                       {m.scoreA ?? 0} — {m.scoreB ?? 0}
                     </span>
                   ) : (
-                    <span className="text-white/30 text-xs bg-white/5 px-3 py-1 rounded-lg">
+                    <span className="text-dim text-xs px-3 py-1 rounded-lg" style={{ backgroundColor: "var(--c-surface2)" }}>
                       VS
                     </span>
                   )}
 
-                  <span className={`font-semibold text-sm ${winnerB ? "text-emerald-400" : "text-white"}`}>
+                  <span className={`font-semibold text-sm ${winnerB ? "text-emerald-700" : "text-theme"}`}>
                     {m.teamB || "TBD"}
                   </span>
                 </div>
@@ -181,8 +182,8 @@ export default function ScheduleManagementModule() {
                   <span
                     className={`text-xs font-medium px-2.5 py-1 rounded-full ${
                       isCompleted
-                        ? "bg-emerald-500/15 text-emerald-400"
-                        : "bg-amber-500/15 text-amber-400"
+                        ? "bg-emerald-500/15 text-emerald-700"
+                        : "bg-amber-500/15 text-amber-700"
                     }`}
                   >
                     {isCompleted ? "Completed" : "Pending"}

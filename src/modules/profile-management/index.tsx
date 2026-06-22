@@ -168,7 +168,7 @@ export default function ProfileManagementModule() {
 
       {/* Stat cards — read-only info from Firestore */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard value={profile.email}  label="Email" accent="teal" />
+        <StatCard value={profile.email}  label="Email" accent="teal" tooltip={profile.email} />
         <StatCard value={profile.status} label="Account Status" />
         <StatCard
           value={profile.teamId ? "Assigned" : "No Team"}

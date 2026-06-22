@@ -30,7 +30,6 @@ export default function StatCard({ value, label, accent = "default", tooltip }: 
       onMouseLeave={() => setHover(false)}
     >
       <div
-<<<<<<< HEAD
         className="font-head text-3xl font-bold leading-none"
         style={{
           color: accentHex[accent],
@@ -38,10 +37,6 @@ export default function StatCard({ value, label, accent = "default", tooltip }: 
           overflowWrap: "anywhere",
           wordBreak: "break-all",
         }}
-=======
-        className="font-head text-lg sm:text-xl lg:text-3xl font-bold leading-tight break-all"
-        style={{ color: accentHex[accent] }}
->>>>>>> 064334c78f6ef58853ee32f1fd04db10a6b447e9
       >
         {value}
       </div>

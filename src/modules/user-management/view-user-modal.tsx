@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where, limit } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, limit, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import ModalBackdrop from "@/components/shared/modal-backdrop";
 
@@ -154,6 +154,77 @@ function useGamerStats(email: string, isGamer: boolean) {
   return { stats, loading, error };
 }
 
+// ---------------------------------------------------------------------------
+// Hook: fetch "created by" admin name and full creation timestamp
+// ---------------------------------------------------------------------------
+function useCreatorInfo(userId: string) {
+  const [creatorName, setCreatorName] = useState<string | null>(null);
+  const [fullCreatedAt, setFullCreatedAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    (async () => {
+      try {
+        const userDocSnap = await getDoc(doc(db, "users", userId));
+        if (cancelled || !userDocSnap.exists()) {
+          setLoading(false);
+          return;
+        }
+
+        const data = userDocSnap.data();
+
+        // Full date/time from createdAt
+        if (data.createdAt) {
+          let dateObj: Date | null = null;
+          if (data.createdAt instanceof Timestamp) {
+            dateObj = data.createdAt.toDate();
+          } else if (typeof data.createdAt === "string") {
+            dateObj = new Date(data.createdAt);
+          }
+          if (dateObj && !isNaN(dateObj.getTime())) {
+            setFullCreatedAt(
+              dateObj.toLocaleDateString("en-PH", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }) +
+                " at " +
+                dateObj.toLocaleTimeString("en-PH", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })
+            );
+          }
+        }
+
+        // Created by name — prefer stored createdByName, otherwise look up
+        if (data.createdByName) {
+          setCreatorName(data.createdByName);
+        } else if (data.createdBy) {
+          const creatorSnap = await getDoc(doc(db, "users", data.createdBy));
+          if (!cancelled && creatorSnap.exists()) {
+            const c = creatorSnap.data();
+            const mi = c.middleInitial ? ` ${c.middleInitial}.` : "";
+            setCreatorName(`${c.firstName ?? ""}${mi} ${c.lastName ?? ""}`.trim());
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load creator info:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  return { creatorName, fullCreatedAt, loading };
+}
+
 function InfoRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div
@@ -205,6 +276,7 @@ export default function ViewUserModal({ user, context, onClose, onDelete }: View
   const isAdmin = context === "admin";
   const isGamer = user.role === "Gamer";
   const { stats, loading: statsLoading, error: statsError } = useGamerStats(user.email, isGamer);
+  const { creatorName, fullCreatedAt, loading: creatorLoading } = useCreatorInfo(user.id);
 
   return (
     <ModalBackdrop
@@ -263,7 +335,19 @@ export default function ViewUserModal({ user, context, onClose, onDelete }: View
           <InfoRow label="Assigned Role" value={user.role} accent={
             user.role === "Admin" ? "#FF4655" : user.role === "Organizer" ? "#8B5CF6" : "#00F5D4"
           } />
-          <InfoRow label="Registration Date" value={user.created} />
+          <InfoRow label="Registration Date" value={fullCreatedAt ?? user.created} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--c-border)" }}>
+            <span style={{ fontSize: "12px", color: "var(--c-text-dim)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              Created By
+            </span>
+            {creatorLoading ? (
+              <span style={{ fontSize: "12px", color: "var(--c-text-dim)", fontStyle: "italic" }}>Loading…</span>
+            ) : (
+              <span style={{ fontSize: "13px", fontWeight: 500, color: "#F59E0B" }}>
+                {creatorName ?? "—"}
+              </span>
+            )}
+          </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
             <span style={{ fontSize: "12px", color: "var(--c-text-dim)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
               Status

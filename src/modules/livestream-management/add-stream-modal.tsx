@@ -5,11 +5,12 @@ import { Livestream } from "@/types/announcement";
 import { OrganizerContext } from "@/lib/organizer-context";
 
 interface AddStreamModalProps {
+  existingStreams: Livestream[];
   onClose: () => void;
   onSave:  (stream: Livestream) => void | Promise<void>;
 }
 
-export default function AddStreamModal({ onClose, onSave }: AddStreamModalProps) {
+export default function AddStreamModal({ existingStreams = [], onClose, onSave }: AddStreamModalProps) {
   // Pull live tournament list from OrganizerContext (Firestore-backed).
   // If this modal is rendered outside the OrganizerProvider (shouldn't happen
   // for admin) we fall back to an empty list gracefully.
@@ -27,12 +28,31 @@ export default function AddStreamModal({ onClose, onSave }: AddStreamModalProps)
   const [status,     setStatus]     = useState<"live" | "scheduled" | "ended">("scheduled");
   const [submitted,  setSubmitted]  = useState(false);
   const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
 
   const fieldError = (val: string) => submitted && !val;
 
   const handleSave = async () => {
     setSubmitted(true);
+    setError(null);
     if (!title || !url) return;
+
+    if (schedule) {
+      const now = new Date();
+      const selected = new Date(schedule);
+      if (selected < now) {
+        setError("Stream schedule cannot be in the past.");
+        return;
+      }
+
+      const isDoubleBooked = existingStreams.some(
+        (s) => s.schedule && new Date(s.schedule).getTime() === selected.getTime()
+      );
+      if (isDoubleBooked) {
+        setError("A livestream is already scheduled at this date and time.");
+        return;
+      }
+    }
 
     const newStream: Livestream = {
       id:             `ls_${Date.now()}`,   // transient; Firestore will assign real ID
@@ -55,6 +75,11 @@ export default function AddStreamModal({ onClose, onSave }: AddStreamModalProps)
 
   return (
     <ModalBackdrop onClose={onClose} title="Add Stream" subtitle="Create a new livestream entry" maxWidth="520px">
+      {error && (
+        <div className="bg-[#FF4655]/10 border border-[#FF4655]/30 text-[#FF4655] text-xs rounded-lg px-4 py-2 mb-4">
+          {error}
+        </div>
+      )}
       {/* Stream Title */}
       <div style={{ marginBottom: "16px" }}>
         <label className="dash-label">

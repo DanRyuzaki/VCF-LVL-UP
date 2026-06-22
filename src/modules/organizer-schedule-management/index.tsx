@@ -174,8 +174,8 @@ export default function OrganizerScheduleModule() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h2 className="text-white text-xl font-bold">Match Schedule</h2>
-          <p className="text-white/40 text-sm mt-0.5">
+          <h2 className="text-theme text-xl font-bold">Match Schedule</h2>
+          <p className="text-muted text-sm mt-0.5">
             {matchesState.length} match{matchesState.length !== 1 ? "es" : ""} total
             {unscheduled > 0 && (
               <span style={{ marginLeft: 8, color: "#FACC15" }}>· {unscheduled} unscheduled</span>
@@ -197,18 +197,17 @@ export default function OrganizerScheduleModule() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 8, padding: 4, width: "fit-content" }}>
+      <div className="flex gap-1 bg-surface3 border border-theme rounded-lg p-1 w-fit">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            style={{
-              padding: "6px 16px", fontSize: 13, borderRadius: 6, border: "none", cursor: "pointer",
-              fontWeight: tab === key ? 700 : 400,
-              backgroundColor: tab === key ? "#4F46E5" : "transparent",
-              color: tab === key ? "#fff" : "rgba(255,255,255,0.5)",
-              transition: "all 0.15s",
-            }}
+            className={`px-4 py-1.5 text-sm rounded-md transition font-medium ${
+              tab === key
+                ? "bg-indigo-600 text-white"
+                : "text-muted hover:text-theme"
+            }`}
+            style={{ border: "none", cursor: "pointer" }}
           >
             {label}
           </button>
@@ -217,9 +216,9 @@ export default function OrganizerScheduleModule() {
 
       {/* Content */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: "64px 0", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Loading schedule…</div>
+        <div className="text-center py-16 text-muted text-sm">Loading schedule…</div>
       ) : sorted.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "64px 0", color: "rgba(255,255,255,0.2)", fontSize: 13 }}>
+        <div className="text-center py-16 text-dim text-sm">
           No {tab === "all" ? "" : tab + " "}matches
           {filterTournamentId !== "all" ? ` for ${tourneyMap[filterTournamentId]?.name ?? "this tournament"}` : ""}.
         </div>
@@ -238,11 +237,11 @@ export default function OrganizerScheduleModule() {
               <div
                 key={m.id}
                 style={{
-                  backgroundColor: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  backgroundColor: "var(--c-surface2)",
+                  border: "1px solid var(--c-border)",
                   borderRadius: 12,
                   padding: "14px 16px",
-                  transition: "border-color 0.15s",
+                  transition: "border-color 0.15s, background-color 0.25s",
                   ...(isEditing ? { borderColor: "rgba(139,92,246,0.5)" } : {}),
                 }}
               >
@@ -253,31 +252,31 @@ export default function OrganizerScheduleModule() {
                       {m.round || "Match"}
                     </div>
                     {tourney && (
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 3 }}>{tourney.name}</div>
+                      <div style={{ fontSize: 10, color: "var(--c-text-dim)", marginBottom: 3 }}>{tourney.name}</div>
                     )}
-                    <div style={{ fontSize: 13, fontWeight: 500, color: isUnscheduled ? "rgba(255,255,255,0.3)" : "#fff" }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: isUnscheduled ? "var(--c-text-dim)" : "var(--c-text)" }}>
                       {isUnscheduled ? "⏰ Not scheduled" : fmtDate(m.date)}
                     </div>
                     {!isUnscheduled && (
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{fmt12(m.time)}</div>
+                      <div style={{ fontSize: 11, color: "var(--c-text-muted)" }}>{fmt12(m.time)}</div>
                     )}
                   </div>
 
                   {/* Teams */}
                   <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: winnerA ? "#34D399" : "#fff" }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: winnerA ? "#34D399" : "var(--c-text)" }}>
                       {m.teamA || "TBD"}
                     </span>
                     {isCompleted ? (
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.5)", backgroundColor: "rgba(255,255,255,0.08)", padding: "4px 12px", borderRadius: 8, fontFamily: "monospace" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--c-text-muted)", backgroundColor: "var(--c-surface3)", padding: "4px 12px", borderRadius: 8, fontFamily: "monospace" }}>
                         {m.scoreA ?? 0} — {m.scoreB ?? 0}
                       </span>
                     ) : (
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", backgroundColor: "rgba(255,255,255,0.04)", padding: "3px 10px", borderRadius: 6 }}>
+                      <span style={{ fontSize: 11, color: "var(--c-text-dim)", backgroundColor: "var(--c-surface)", padding: "3px 10px", borderRadius: 6 }}>
                         VS
                       </span>
                     )}
-                    <span style={{ fontWeight: 600, fontSize: 13, color: winnerB ? "#34D399" : "#fff" }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: winnerB ? "#34D399" : "var(--c-text)" }}>
                       {m.teamB || "TBD"}
                     </span>
                   </div>
@@ -292,9 +291,9 @@ export default function OrganizerScheduleModule() {
                         onClick={() => setEditingMatchId(isEditing ? null : m.id)}
                         style={{
                           fontSize: 10, padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontWeight: 600,
-                          border: isEditing ? "1px solid #8B5CF6" : "1px solid rgba(255,255,255,0.15)",
+                          border: isEditing ? "1px solid #8B5CF6" : "1px solid var(--c-border)",
                           backgroundColor: isEditing ? "rgba(139,92,246,0.2)" : "transparent",
-                          color: isEditing ? "#8B5CF6" : "rgba(255,255,255,0.5)",
+                          color: isEditing ? "#8B5CF6" : "var(--c-text-muted)",
                           transition: "all 0.15s",
                         }}
                       >

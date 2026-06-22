@@ -68,7 +68,8 @@ export default function FreeAgentsDirectoryModule() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, IGN, or role..."
-              className="dash-input pl-9"
+              className="dash-input"
+              style={{ paddingLeft: "36px" }}
             />
           </div>
           <select

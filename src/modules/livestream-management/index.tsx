@@ -372,6 +372,7 @@ export default function LivestreamManagementModule({ showManageControls = false 
       {/* ── Add Stream Modal ────────────────────────────────────────────── */}
       {showAddModal && (
         <AddStreamModal
+          existingStreams={streams}
           onClose={() => setShowAddModal(false)}
           onSave={async (stream) => {
             await handleAddStream(stream);

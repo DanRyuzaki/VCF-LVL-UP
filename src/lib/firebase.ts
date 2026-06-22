@@ -17,6 +17,9 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Persist the auth session in localStorage so the user stays logged in
-// across page refreshes and new tabs until they explicitly sign out.
+// Default persistence before any sign-in happens. login-form.tsx explicitly
+// calls setPersistence() again right before signInWithEmailAndPassword,
+// switching to browserSessionPersistence when the user does NOT check
+// "Remember me" — so this default only matters pre-login / for code paths
+// that don't go through the login form.
 setPersistence(auth, browserLocalPersistence).catch(() => {});

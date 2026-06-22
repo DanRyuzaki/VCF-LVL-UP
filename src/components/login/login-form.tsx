@@ -2,7 +2,12 @@
 // src/components/login/login-form.tsx
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "firebase/auth";
 import {
   doc,
   getDoc,
@@ -11,7 +16,6 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import RoleSelector from "@/components/login/role-selector";
 import { ConsentSection } from "@/components/login/consent-modal";
 import { UserRole } from "@/types/user";
 import { useTheme } from "@/lib/theme-context";
@@ -23,12 +27,15 @@ const POLICY_VERSION = "1.0"; // bump when policy changes to re-prompt
 const ROLE_COOKIE_NAME = "vcf_role";
 const ROLE_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
-function setRoleCookie(role: UserRole) {
+function setRoleCookie(role: UserRole, rememberMe: boolean) {
   const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
   document.cookie = [
     `${ROLE_COOKIE_NAME}=${role}`,
     "path=/",
-    `max-age=${ROLE_COOKIE_MAX_AGE}`,
+    // Remembered: persists for 7 days like the Firebase session does.
+    // Not remembered: omit max-age entirely so it's a session cookie that
+    // disappears when the browser closes, matching browserSessionPersistence.
+    rememberMe ? `max-age=${ROLE_COOKIE_MAX_AGE}` : "",
     "samesite=lax",
     isHttps ? "secure" : "",
   ]
@@ -80,10 +87,10 @@ export default function LoginForm() {
   const { theme } = useTheme();
   void theme;
 
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [consentGiven, setConsentGiven] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -109,9 +116,7 @@ export default function LoginForm() {
     }
   };
 
-  const welcomeMessage = selectedRole
-    ? `WELCOME BACK, ${selectedRole.toUpperCase()}!`
-    : "WELCOME BACK!";
+  const welcomeMessage = "WELCOME BACK!";
 
   const handleEmailBlur = () => {
     setTouched((t) => ({ ...t, email: true }));
@@ -131,6 +136,17 @@ export default function LoginForm() {
     setError("");
 
     try {
+      // Persistence must be set BEFORE signInWithEmailAndPassword — Firebase
+      // applies whatever persistence is currently configured to the session
+      // created by the next sign-in call.
+      //   - rememberMe → browserLocalPersistence: survives browser restarts.
+      //   - not remembered → browserSessionPersistence: cleared when the
+      //     browser/tab is closed, so the user is signed out next visit.
+      await setPersistence(
+        auth,
+        rememberMe ? browserLocalPersistence : browserSessionPersistence
+      );
+
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const uid = credential.user.uid;
 
@@ -154,11 +170,9 @@ export default function LoginForm() {
         return;
       }
 
-      if (selectedRole && profile.role !== selectedRole) {
-        setError("The role you selected does not match your account. Please select the correct role.");
-        await auth.signOut();
-        return;
-      }
+      // Role is read straight from the user's Firestore document — never
+      // from a client-side choice. The account's role in the database is
+      // the single source of truth for where the user is routed.
 
       // Store consent record in Firestore (non-blocking)
       storeConsentRecord(uid);
@@ -166,7 +180,7 @@ export default function LoginForm() {
       // Update lastLogin timestamp (non-blocking)
       updateDoc(doc(db, "users", uid), { lastLogin: serverTimestamp() }).catch(() => {});
 
-      setRoleCookie(profile.role);
+      setRoleCookie(profile.role, rememberMe);
       router.push(`/${profile.role}`);
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? "";
@@ -197,7 +211,6 @@ export default function LoginForm() {
     setEmailError(eErr);
     setPasswordErrors(pErr);
 
-    if (!selectedRole) { setError("Please select your role."); return; }
     if (eErr || pErr.length > 0) {
       setError("Please fix the errors above before continuing.");
       return;
@@ -247,12 +260,9 @@ export default function LoginForm() {
           {welcomeMessage}
         </h2>
         <p className="text-xs" style={{ color: "var(--c-text-dim)" }}>
-          Select your role to continue
+          Sign in with your account
         </p>
       </div>
-
-      {/* Role Selector */}
-      <RoleSelector selected={selectedRole} onSelect={setSelectedRole} />
 
       <form onSubmit={handleLogin} className="space-y-4" noValidate>
 
@@ -358,6 +368,33 @@ export default function LoginForm() {
             </p>
           )}
         </div>
+
+        {/* ── Remember Me ── */}
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            style={{
+              width: "16px",
+              height: "16px",
+              accentColor: "var(--c-accent)",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ fontSize: "12px", color: "var(--c-text-muted)" }}>
+            Remember me on this device
+          </span>
+        </label>
 
         {/* ── Consent Section (checkbox + T&C/Privacy links + Privacy Notice) ── */}
         <div style={{ marginTop: "8px" }}>

@@ -25,7 +25,13 @@
 // Cookie contract (set in login-form.tsx, cleared in sidebar.tsx / navbar.tsx):
 //   name:      vcf_role
 //   value:     one of "developer" | "admin" | "organizer" | "gamer"
-//   set when:  immediately after a successful login + role/status validation
+//   set when:  immediately after a successful login, using the role read
+//              from the user's Firestore document (never a client choice)
+//   lifetime:  persistent (7 days) if the user checked "Remember me" at
+//              login, otherwise a session cookie — mirrors whichever
+//              Firebase Auth persistence (local vs session) was set for
+//              that sign-in, so the cookie and the Firebase session expire
+//              together.
 //   cleared:   immediately on sign-out, before/alongside auth.signOut()
 //
 // NOTE: This middleware intentionally has no knowledge of Firebase Auth

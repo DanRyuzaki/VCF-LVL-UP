@@ -6,11 +6,19 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "vcf-lvlup",
     "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "redirects": [
+      {
+        "source": "/**",
+        "destination": "https://vcf-lvlup.vercel.app/:splat",
+        "type": 301
+      }
     ]
   },
   "auth": {

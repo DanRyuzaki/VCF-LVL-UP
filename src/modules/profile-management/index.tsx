@@ -54,6 +54,11 @@ export default function ProfileManagementModule() {
       return;
     }
 
+    if (trimmedPhone.length !== 11) {
+      setError("Phone number must be exactly 11 digits.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -120,12 +125,12 @@ export default function ProfileManagementModule() {
     : "Free Agent";
 
   // ── Editable field rows ────────────────────────────────────────────────────
-  const fields: { label: string; value: string; setter: (v: string) => void; placeholder?: string }[] = [
+  const fields: { label: string; value: string; setter: (v: string) => void; placeholder?: string; maxLength?: number }[] = [
     { label: "First Name",      value: firstName,     setter: setFirstName,     placeholder: "e.g. John" },
     { label: "Middle Initial",  value: middleInitial, setter: setMiddleInitial, placeholder: "e.g. D" },
     { label: "Last Name",       value: lastName,      setter: setLastName,      placeholder: "e.g. Dela Cruz" },
     { label: "In-Game Name",    value: inGameName,    setter: setInGameName,    placeholder: "e.g. JohnDC_MLBB" },
-    { label: "Phone Number",    value: phone,         setter: (v) => setPhone(v.replace(/\D/g, "")),         placeholder: "e.g. 09123456789" },
+    { label: "Phone Number",    value: phone,         setter: (v) => setPhone(v.replace(/\D/g, "").slice(0, 11)),         placeholder: "e.g. 09123456789", maxLength: 11 },
   ];
 
   return (
@@ -204,7 +209,7 @@ export default function ProfileManagementModule() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {fields.map(({ label, value, setter, placeholder }) => {
+          {fields.map(({ label, value, setter, placeholder, maxLength }) => {
             const isEmpty = !value.trim();
             const showErrorBorder = editing && isEmpty && label !== "Middle Initial";
             return (
@@ -215,6 +220,7 @@ export default function ProfileManagementModule() {
                   onChange={(e) => setter(e.target.value)}
                   disabled={!editing}
                   placeholder={placeholder}
+                  maxLength={maxLength}
                   className="dash-input"
                   style={{
                     opacity: editing ? 1 : 0.5,
